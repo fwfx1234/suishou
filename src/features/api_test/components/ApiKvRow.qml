@@ -40,9 +40,9 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing.s4
-        anchors.rightMargin: Theme.spacing.s4
-        spacing: Theme.spacing.s3
+        anchors.leftMargin: Theme.space["3"]
+        anchors.rightMargin: Theme.space["3"]
+        spacing: Theme.space["2.5"]
 
         UiCheckBox {
             dark: root.dark
@@ -56,12 +56,12 @@ Rectangle {
             Layout.preferredWidth: root.keyWidth
             text: root.rowData.key || ""
             hoverEnabled: true
-            leftPadding: Theme.spacing.s2
-            rightPadding: Theme.spacing.s2
+            leftPadding: Theme.space["2"]
+            rightPadding: Theme.space["2"]
             selectedTextColor: root.textMain
             selectionColor: Theme.token("color-primary-active", root.dark)
             background: Rectangle {
-                radius: Theme.radius.xs
+                radius: Theme.radii.xs
                 color: keyField.activeFocus
                     ? root.fieldFocusBg
                     : (keyField.hovered ? root.fieldHoverBg : "transparent")
@@ -69,7 +69,7 @@ Rectangle {
                 border.color: Theme.token("color-primary-active", root.dark)
             }
             color: root.textMain
-            font.family: "JetBrains Mono"
+            font.family: Theme.fontFamily.mono
             placeholderText: "Key"
             placeholderTextColor: Theme.token("color-text-secondary", root.dark)
             onEditingFinished: root.keyCommitted(text)
@@ -81,12 +81,12 @@ Rectangle {
             Layout.horizontalStretchFactor: root.valueWeight
             text: root.rowData.value || ""
             hoverEnabled: true
-            leftPadding: Theme.spacing.s2
-            rightPadding: Theme.spacing.s2
+            leftPadding: Theme.space["2"]
+            rightPadding: Theme.space["2"]
             selectedTextColor: root.textMain
             selectionColor: Theme.token("color-primary-active", root.dark)
             background: Rectangle {
-                radius: Theme.radius.xs
+                radius: Theme.radii.xs
                 color: valueField.activeFocus
                     ? root.fieldFocusBg
                     : (valueField.hovered ? root.fieldHoverBg : "transparent")
@@ -94,7 +94,7 @@ Rectangle {
                 border.color: Theme.token("color-primary-active", root.dark)
             }
             color: root.textMain
-            font.family: "JetBrains Mono"
+            font.family: Theme.fontFamily.mono
             placeholderText: "Value"
             placeholderTextColor: Theme.token("color-text-secondary", root.dark)
             onEditingFinished: root.valueCommitted(text)
@@ -112,8 +112,8 @@ Rectangle {
             Label {
                 text: root.fixedTypeText
                 color: root.textMuted
-                font.family: "JetBrains Mono"
-                font.pixelSize: Theme.typeScale.caption
+                font.family: Theme.fontFamily.mono
+                font.pixelSize: Theme.fontSize.caption
                 verticalAlignment: Text.AlignVCenter
             }
         }
@@ -137,12 +137,12 @@ Rectangle {
             Layout.preferredWidth: root.descWidth
             text: root.rowData.desc || ""
             hoverEnabled: true
-            leftPadding: Theme.spacing.s2
-            rightPadding: Theme.spacing.s2
+            leftPadding: Theme.space["2"]
+            rightPadding: Theme.space["2"]
             selectedTextColor: root.textMain
             selectionColor: Theme.token("color-primary-active", root.dark)
             background: Rectangle {
-                radius: Theme.radius.xs
+                radius: Theme.radii.xs
                 color: descField.activeFocus
                     ? root.fieldFocusBg
                     : (descField.hovered ? root.fieldHoverBg : "transparent")
@@ -150,7 +150,7 @@ Rectangle {
                 border.color: Theme.token("color-primary-active", root.dark)
             }
             color: root.textMain
-            font.family: "JetBrains Mono"
+            font.family: Theme.fontFamily.mono
             placeholderText: "Description"
             placeholderTextColor: Theme.token("color-text-secondary", root.dark)
             onEditingFinished: root.descCommitted(text)

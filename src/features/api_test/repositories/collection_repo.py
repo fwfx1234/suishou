@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from app.storage import SQLiteConnection, SQLiteDatabase, sqlite_database
+from app.storage import SQLiteConnection, SQLiteDatabase
 
 
 class CollectionRepository:
-    def __init__(self, database: SQLiteDatabase | str | Path) -> None:
-        self._database = database if isinstance(database, SQLiteDatabase) else sqlite_database(database)
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
         self._db_path = self._database.path
 
     def load_tree(self) -> list[dict]:

@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Gradient 渐变"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "// LinearGradient\nRectangle {\n    gradient: Gradient {\n        GradientStop { position: 0.0; color: '#8B5CF6' }\n        GradientStop { position: 1.0; color: '#EC4899' }\n    }\n}" }
             }
             RowLayout { spacing: 12
@@ -35,7 +35,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Flow 自动换行布局"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "Flow {  spacing: 4  // 子元素自动排列，超出宽度自动换行\n    Repeater { model: tags; delegate: ... }  }" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 100; radius: 8; border.width: 1; border.color: Theme.token("color-border-default", dark); color: "transparent"

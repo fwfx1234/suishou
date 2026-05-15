@@ -23,9 +23,9 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s2
-        Label { text: "JSON 解析"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2"]
+        Label { text: "JSON 解析"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -80,7 +80,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: Theme.token("color-bg-subtle", dark)
-                    radius: Theme.radius.lg
+                    radius: Theme.radii.lg
                     UiScrollView {
                         id: outputScroll
                         anchors.fill: parent

@@ -44,7 +44,7 @@ CheckBox {
     }
 
     background: Rectangle {
-        radius: Theme.radius.md
+        radius: Theme.radii.md
         color: control.hovered
             ? Qt.rgba(Theme.token("color-primary-active", control.dark).r, Theme.token("color-primary-active", control.dark).g, Theme.token("color-primary-active", control.dark).b, control.dark ? 0.16 : 0.08)
             : "transparent"

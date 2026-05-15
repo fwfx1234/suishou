@@ -110,7 +110,7 @@ Rectangle {
                 }
                 textFormat: Text.RichText
                 font.pixelSize: 14
-                font.family: "IBM Plex Sans"
+                font.family: Theme.fontFamily.ui
                 color: Theme.token("color-text-primary", dark)
                 elide: Text.ElideRight
             }
@@ -119,7 +119,7 @@ Rectangle {
             Label {
                 text: root.pluginDescription
                 font.pixelSize: 11
-                font.family: "JetBrains Mono"
+                font.family: Theme.fontFamily.mono
                 color: Theme.token("color-text-regular", dark)
                 elide: Text.ElideRight
                 Layout.fillWidth: true
@@ -149,7 +149,7 @@ Rectangle {
                     return ""
                 }
                 font.pixelSize: 10
-                font.family: "IBM Plex Sans"
+                font.family: Theme.fontFamily.ui
                 color: {
                     if (root.source === "system") return Theme.token("color-warning", dark)
                     if (root.source === "app") return Theme.token("color-info", dark)

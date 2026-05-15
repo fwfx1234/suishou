@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from .service import ClipboardBackgroundService
+from app.services.clipboard import ClipboardService
 
 
 class ClipboardWindowViewModel(QObject):
@@ -18,7 +18,7 @@ class ClipboardWindowViewModel(QObject):
 
     def __init__(
         self,
-        service: ClipboardBackgroundService,
+        service: ClipboardService,
         *,
         initial_panel: str = "history",
         initial_query: str = "",
@@ -27,8 +27,8 @@ class ClipboardWindowViewModel(QObject):
         self._service = service
         self._query = initial_query
         self._initial_panel = initial_panel
-        self._service.store.historyChanged.connect(self._emit_history)
-        self._service.store.configChanged.connect(self._emit_config)
+        self._service.add_history_listener(self._emit_history)
+        self._service.add_config_listener(self._emit_config)
 
     @Slot(result=str)
     def initialPanel(self) -> str:
@@ -60,7 +60,7 @@ class ClipboardWindowViewModel(QObject):
         db_id = self._parse_id(item_id)
         if db_id is None:
             return
-        pinned = self._service.store.toggle_pin(db_id)
+        pinned = self._service.toggle_pin(db_id)
         self.messageChanged.emit("已置顶" if pinned else "已取消置顶")
 
     @Slot(str)
@@ -68,25 +68,25 @@ class ClipboardWindowViewModel(QObject):
         db_id = self._parse_id(item_id)
         if db_id is None:
             return
-        self._service.store.delete_item(db_id)
+        self._service.delete_item(db_id)
         self.messageChanged.emit("已删除")
 
     @Slot()
     def clearHistory(self) -> None:
-        self._service.store.clear_all()
+        self._service.clear_all()
         self.messageChanged.emit("剪切板历史已清空")
 
     @Slot(bool)
     def setCaptureText(self, value: bool) -> None:
-        self._service.store.set_config_value("capture_text", bool(value))
+        self._service.set_config_value("capture_text", bool(value))
 
     @Slot(bool)
     def setCaptureImage(self, value: bool) -> None:
-        self._service.store.set_config_value("capture_image", bool(value))
+        self._service.set_config_value("capture_image", bool(value))
 
     @Slot(bool)
     def setCaptureFiles(self, value: bool) -> None:
-        self._service.store.set_config_value("capture_files", bool(value))
+        self._service.set_config_value("capture_files", bool(value))
 
     @Slot(str)
     def saveIgnorePatterns(self, text: str) -> None:
@@ -95,12 +95,12 @@ class ClipboardWindowViewModel(QObject):
             for part in re.split(r"[|\n]", text)
             if part.strip()
         ]
-        self._service.store.set_config_value("ignore_patterns", patterns)
+        self._service.set_config_value("ignore_patterns", patterns)
         self.messageChanged.emit("过滤规则已保存")
 
     @Slot()
     def clearIgnorePatterns(self) -> None:
-        self._service.store.set_config_value("ignore_patterns", [])
+        self._service.set_config_value("ignore_patterns", [])
         self.messageChanged.emit("过滤规则已清空")
 
     @Slot(str)
@@ -110,7 +110,7 @@ class ClipboardWindowViewModel(QObject):
         except ValueError:
             self.messageChanged.emit("文本长度上限需要是数字")
             return
-        self._service.store.set_config_value("max_text_chars", max_chars)
+        self._service.set_config_value("max_text_chars", max_chars)
         self.messageChanged.emit("文本长度上限已保存")
 
     @Slot(str)
@@ -119,18 +119,12 @@ class ClipboardWindowViewModel(QObject):
         if not hotkey:
             self.messageChanged.emit("快捷键格式无效")
             return
-        self._service.store.set_config_value("hotkey", hotkey)
+        self._service.set_config_value("hotkey", hotkey)
         self.messageChanged.emit(f"剪切板快捷键已保存为 {hotkey}")
 
     def close(self) -> None:
-        try:
-            self._service.store.historyChanged.disconnect(self._emit_history)
-        except RuntimeError:
-            pass
-        try:
-            self._service.store.configChanged.disconnect(self._emit_config)
-        except RuntimeError:
-            pass
+        self._service.remove_history_listener(self._emit_history)
+        self._service.remove_config_listener(self._emit_config)
 
     def deleteLater(self) -> None:
         self.close()
@@ -138,11 +132,11 @@ class ClipboardWindowViewModel(QObject):
 
     def _emit_history(self) -> None:
         self.historyChanged.emit(
-            [self._to_view_item(row) for row in self._service.store.search(self._query)]
+            [self._to_view_item(row) for row in self._service.search(self._query)]
         )
 
     def _emit_config(self) -> None:
-        config = self._service.store.get_config()
+        config = self._service.get_config()
         self.configChanged.emit(
             {
                 "capture_text": bool(config.get("capture_text", True)),

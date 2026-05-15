@@ -5,6 +5,7 @@ import "../../../app/ui"
 import "../../../app/theme"
 
 Flickable {
+    id: root
     anchors.fill: parent; clip: true; contentHeight: col.implicitHeight + 32
     property bool dark: false; property color primary: "#8B5CF6"
     property string keyLog: "按任意键..."
@@ -19,12 +20,12 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Keys 组件级按键捕获"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "Item {\n    focus: true\n    Keys.onPressed: console.log(event.key)  // 捕获按键\n    Keys.onEscapePressed: close()          // 监听特定键\n    Keys.onReturnPressed: submit()         // 回车\n}" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 8; border.width: 1; border.color: primary; color: "transparent"
                 focus: true
-                Label { anchors.centerIn: parent; text: keyLog; font.pixelSize: 14; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark) }
+                Label { anchors.centerIn: parent; text: keyLog; font.pixelSize: 14; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark) }
                 Keys.onPressed: function (event) { root.keyLog = "Key: " + event.key + "  Text: " + event.text; event.accepted = true } }
             Label { text: "点击上方区域获得焦点后按任意键"; font.pixelSize: 12; color: Theme.token("color-text-secondary", dark) }
         }
@@ -33,7 +34,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Shortcut 快捷键"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'Shortcut { sequence: "Ctrl+W"; onActivated: window.close() }' }
             }
             RowLayout {

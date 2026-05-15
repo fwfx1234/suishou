@@ -32,16 +32,16 @@ ColumnLayout {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Theme.spacing.s4
-            anchors.rightMargin: Theme.spacing.s4
-            spacing: Theme.spacing.s3
+            anchors.leftMargin: Theme.space["3"]
+            anchors.rightMargin: Theme.space["3"]
+            spacing: Theme.space["2.5"]
 
             Item { Layout.preferredWidth: root.checkWidth }
             Label {
                 text: root.keyTitle
                 color: root.textMuted
                 Layout.preferredWidth: root.keyWidth
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
                 elide: Text.ElideRight
             }
             Label {
@@ -49,7 +49,7 @@ ColumnLayout {
                 color: root.textMuted
                 Layout.fillWidth: true
                 Layout.horizontalStretchFactor: root.valueWeight
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
                 elide: Text.ElideRight
             }
             Label {
@@ -57,14 +57,14 @@ ColumnLayout {
                 visible: root.showTypeColumn
                 color: root.textMuted
                 Layout.preferredWidth: root.showTypeColumn ? root.typeWidth : 0
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
                 elide: Text.ElideRight
             }
             Label {
                 text: root.descTitle
                 color: root.textMuted
                 Layout.preferredWidth: root.descWidth
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
                 elide: Text.ElideRight
             }
             Item { Layout.preferredWidth: root.deleteWidth }

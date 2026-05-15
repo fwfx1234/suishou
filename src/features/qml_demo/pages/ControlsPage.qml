@@ -27,7 +27,7 @@ Flickable {
             delegate: ColumnLayout { spacing: 6
                 Label { text: modelData.title; font.pixelSize: 14; font.bold: true; color: Theme.token("color-text-primary", dark) }
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; radius: 6; color: Theme.token("color-bg-subtle", dark)
-                    Label { anchors.verticalCenter: parent.verticalCenter; x: 10; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark); text: modelData.code }
+                    Label { anchors.verticalCenter: parent.verticalCenter; x: 10; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark); text: modelData.code }
                 }
             }
         }

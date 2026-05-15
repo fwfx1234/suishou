@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QFileDialog
 
-from .models import FileDialogOptions
+from app.platform.models import FileDialogOptions
 
 
 class QtDialogApi:

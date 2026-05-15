@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "双向绑定 Python ↔ QML"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "// Python: @Property(str) formName\n// QML: text: qmlDemoVm.formName\n// 改任何一边，另一边自动同步" }
             }
             RowLayout {
@@ -32,7 +32,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "声明式绑定：自动跟随变化"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "Rectangle {  width: 40 + count * 5;  color: count > 5 ? '#EF4444' : '#10B981'  }" }
             }
             RowLayout { spacing: 12
@@ -53,7 +53,7 @@ Flickable {
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: qmlDemoVm.setDemoColor(modelData) } } }
             }
             Rectangle { width: 120; height: 36; radius: 8; color: qmlDemoVm.demoColor
-                Label { anchors.centerIn: parent; text: qmlDemoVm.demoColor; color: "white"; font.family: "JetBrains Mono"; font.pixelSize: 12 } }
+                Label { anchors.centerIn: parent; text: qmlDemoVm.demoColor; color: "white"; font.family: Theme.fontFamily.mono; font.pixelSize: 12 } }
         }
 
         Label { text: "QML 绑定是自动跟踪的 —— 值变了，所有依赖它的表达式自动重新计算。不需要手动 setState/updateView。"; font.pixelSize: 12; color: primary; wrapMode: Text.Wrap; Layout.fillWidth: true }

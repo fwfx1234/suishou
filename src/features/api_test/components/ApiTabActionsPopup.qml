@@ -22,7 +22,7 @@ Popup {
 
     background: UiPopupSurface {
         dark: root.dark
-        radius: Theme.radius.lg
+        radius: Theme.radii.lg
         fillColor: root.panelBg
     }
 
@@ -33,14 +33,14 @@ Popup {
             width: root.width
             height: 54
             color: tabAllMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                anchors.leftMargin: Theme.spacing.s4
+                anchors.leftMargin: Theme.space["3"]
                 text: "关闭全部标签页"
                 color: Theme.token("color-text-primary", root.dark)
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
                 font.bold: false
             }
             MouseArea {
@@ -59,14 +59,14 @@ Popup {
             width: root.width
             height: 54
             color: tabCurrentMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                anchors.leftMargin: Theme.spacing.s4
+                anchors.leftMargin: Theme.space["3"]
                 text: "关闭当前标签页"
                 color: Theme.token("color-text-primary", root.dark)
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
                 font.bold: false
             }
             MouseArea {
@@ -85,14 +85,14 @@ Popup {
             width: root.width
             height: 54
             color: tabOtherMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                anchors.leftMargin: Theme.spacing.s4
+                anchors.leftMargin: Theme.space["3"]
                 text: "关闭其它标签页"
                 color: Theme.token("color-text-primary", root.dark)
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
                 font.bold: false
             }
             MouseArea {

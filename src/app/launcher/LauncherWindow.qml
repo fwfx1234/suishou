@@ -49,6 +49,7 @@ Window {
     property string mixedPluginId: ""
     property string mixedPluginMode: ""
     property bool suppressPluginInputEdit: false
+    property bool prewarming: false
 
     Item {
         focus: true
@@ -62,6 +63,9 @@ Window {
     }
 
     onActiveChanged: {
+        console.debug("launcher.qml.active_changed active=" + active + " visible=" + visible + " mixedMode=" + mixedMode + " prewarming=" + prewarming)
+        if (prewarming)
+            return
         if (!active && !mixedMode) {
             hideTimer.start()
         }
@@ -74,10 +78,12 @@ Window {
     }
 
     onVisibleChanged: {
+        console.debug("launcher.qml.visible_changed visible=" + visible + " active=" + active + " mixedMode=" + mixedMode + " prewarming=" + prewarming)
+        if (prewarming)
+            return
         if (visible) {
-            searchInput.clear()
+            setSearchInputSilently("")
             searchInput.forceActiveFocus()
-            if (hasBridge) launcherBridge.performSearch("")
             exitMixedMode(false)
         } else if (mixedMode) {
             exitMixedMode(true)
@@ -339,7 +345,7 @@ Window {
                         Layout.fillHeight: true
                         placeholderText: "搜索功能..."
                         font.pixelSize: 16
-                        font.family: "IBM Plex Sans"
+                        font.family: Theme.fontFamily.ui
                         color: Theme.token("color-text-primary", dark)
                         placeholderTextColor: Theme.token("color-text-regular", dark)
                         background: null
@@ -483,7 +489,7 @@ Window {
                     text: "未找到匹配的功能"
                     color: Theme.token("color-text-regular", dark)
                     font.pixelSize: 14
-                    font.family: "IBM Plex Sans"
+                    font.family: Theme.fontFamily.ui
                 }
             }
 
@@ -599,7 +605,7 @@ Window {
                                         Layout.fillWidth: true
                                         text: pluginRow.rowData.title || pluginRow.rowData.name || ""
                                         font.pixelSize: 14
-                                        font.family: "IBM Plex Sans"
+                                        font.family: Theme.fontFamily.ui
                                         color: Theme.token("color-text-primary", launcher.dark)
                                         elide: Text.ElideRight
                                     }
@@ -608,7 +614,7 @@ Window {
                                         Layout.fillWidth: true
                                         text: pluginRow.rowData.subtitle || pluginRow.rowData.description || ""
                                         font.pixelSize: 11
-                                        font.family: "JetBrains Mono"
+                                        font.family: Theme.fontFamily.mono
                                         color: Theme.token("color-text-regular", launcher.dark)
                                         elide: Text.ElideRight
                                     }
@@ -690,7 +696,7 @@ Window {
                     text: "暂无匹配结果"
                     color: Theme.token("color-text-regular", dark)
                     font.pixelSize: 14
-                    font.family: "IBM Plex Sans"
+                    font.family: Theme.fontFamily.ui
                 }
             }
         }

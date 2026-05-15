@@ -17,7 +17,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "数据过滤 + 列表展示"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "ListView {  model: vm.items;  delegate: Rectangle { ... }  }  // model 来自 Python @Property" }
             }
             UiTextField { dark: dark; Layout.fillWidth: true; placeholderText: "搜索过滤..."; onTextChanged: qmlDemoVm.filterItems(text) }

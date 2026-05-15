@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
-from app.storage import SQLiteDatabase, sqlite_database
+from app.storage import SQLiteDatabase
 
 
 class TabRepository:
-    def __init__(self, database: SQLiteDatabase | str | Path) -> None:
-        self._database = database if isinstance(database, SQLiteDatabase) else sqlite_database(database)
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
         self._db_path = self._database.path
 
     def list_tabs(self) -> list[dict]:

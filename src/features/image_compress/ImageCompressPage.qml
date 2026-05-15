@@ -26,18 +26,18 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s3
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2.5"]
 
-        Label { text: "图片压缩"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        Label { text: "图片压缩"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.spacing.s4 * 6 + Theme.spacing.s1
-            radius: Theme.radius.xl
+            Layout.preferredHeight: Theme.space["3"] * 6 + Theme.space["1"]
+            radius: Theme.radii.xl
             color: panelBg
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: Theme.spacing.s4
+                anchors.margins: Theme.space["3"]
                 UiButton {
                     text: "视觉无损"
                     checkable: true
@@ -54,7 +54,7 @@ Item {
                     variant: checked ? "primary" : "secondary"
                     onClicked: mode = "normal"
                 }
-                Label { text: "质量 " + quality + "%"; color: textMain; font.family: "JetBrains Mono"; font.pixelSize: Theme.typeScale.mono }
+                Label { text: "质量 " + quality + "%"; color: textMain; font.family: Theme.fontFamily.mono; font.pixelSize: Theme.fontSize.mono }
                 UiSlider {
                     dark: dark
                     from: 10

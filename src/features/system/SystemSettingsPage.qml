@@ -13,17 +13,17 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s3
-        Label { text: "系统设置"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2.5"]
+        Label { text: "系统设置"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.spacing.s4 * 9
-            radius: Theme.radius.xl
+            Layout.preferredHeight: Theme.space["3"] * 9
+            radius: Theme.radii.xl
             color: panelBg
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: Theme.spacing.s4
+                anchors.margins: Theme.space["3"]
                 Label { text: "主题模式"; font.bold: true; color: textMain }
                 RowLayout {
                     RadioButton { text: "浅色"; checked: app.theme === "light"; onClicked: app.setTheme("light") }
@@ -32,5 +32,23 @@ Item {
                 Label { text: "已启用本地数据存储"; color: textMuted }
             }
         }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Theme.space["3"] * 12
+            radius: Theme.radii.xl
+            color: panelBg
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.space["3"]
+                spacing: Theme.space["2"]
+                Label { text: "开发诊断"; font.bold: true; color: textMain }
+                Label { text: "数据目录：" + diagnostics.dataDir; color: textMuted; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                Label { text: "日志目录：" + diagnostics.logDir; color: textMuted; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                Label { text: "插件数量：" + diagnostics.pluginCount; color: textMuted }
+                Label { text: "后台插件：" + diagnostics.backgroundPlugins; color: textMuted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            }
+        }
     }
+
+    property var diagnostics: (typeof systemSettingsVm !== "undefined" && systemSettingsVm ? systemSettingsVm.diagnostics() : ({}))
 }

@@ -17,7 +17,7 @@ Rectangle {
     Layout.preferredHeight: 32
     implicitWidth: 48
     implicitHeight: 32
-    radius: Theme.radius.md
+    radius: Theme.radii.md
     color: hit.containsMouse ? Qt.rgba(root.dangerColor.r, root.dangerColor.g, root.dangerColor.b, root.dark ? 0.18 : 0.10) : "transparent"
     border.width: hit.containsMouse ? 1 : 0
     border.color: Qt.rgba(root.dangerColor.r, root.dangerColor.g, root.dangerColor.b, root.dark ? 0.50 : 0.30)

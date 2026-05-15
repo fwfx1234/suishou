@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "基本模式"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 72; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "TabBar {\n    id: bar; currentIndex: root.tabIndex\n    TabButton { text: '标签 A' }\n    TabButton { text: '标签 B' }\n    TabButton { text: '标签 C' }\n}\n\nStackLayout {\n    currentIndex: bar.currentIndex\n    Rectangle { }  // 页面 A\n    Rectangle { }  // 页面 B\n    Rectangle { }  // 页面 C\n}" }
             }
         }
@@ -45,9 +45,9 @@ Flickable {
                         RowLayout { Label { text: "深色模式"; font.pixelSize: 13; color: Theme.token("color-text-primary", dark); Layout.fillWidth: true } UiSwitch { dark: dark; checked: dark } }
                         Item { Layout.fillHeight: true } }
                     ColumnLayout { spacing: 4
-                        Label { text: "[12:00] 启动完成"; font.pixelSize: 12; color: "#10B981"; font.family: "JetBrains Mono" }
-                        Label { text: "[12:01] 加载插件列表"; font.pixelSize: 12; color: Theme.token("color-text-regular", dark); font.family: "JetBrains Mono" }
-                        Label { text: "[12:02] 初始化完成"; font.pixelSize: 12; color: Theme.token("color-text-regular", dark); font.family: "JetBrains Mono" }
+                        Label { text: "[12:00] 启动完成"; font.pixelSize: 12; color: "#10B981"; font.family: Theme.fontFamily.mono }
+                        Label { text: "[12:01] 加载插件列表"; font.pixelSize: 12; color: Theme.token("color-text-regular", dark); font.family: Theme.fontFamily.mono }
+                        Label { text: "[12:02] 初始化完成"; font.pixelSize: 12; color: Theme.token("color-text-regular", dark); font.family: Theme.fontFamily.mono }
                         Item { Layout.fillHeight: true } } }
             }
         }

@@ -29,15 +29,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s3
-        spacing: Theme.spacing.s2
+        anchors.margins: Theme.space["2.5"]
+        spacing: Theme.space["2"]
 
         RowLayout {
             Layout.fillWidth: true
             Label {
                 text: "调试用例"
                 color: root.textMain
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
             }
             Item { Layout.fillWidth: true }
             UiButton {
@@ -60,7 +60,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 color: Theme.token("color-bg-subtle", root.dark)
-                radius: Theme.radius.md
+                radius: Theme.radii.md
             }
             Column {
                 id: casesColumn; width: parent.width
@@ -72,8 +72,8 @@ Item {
                         color: "transparent"
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing.s2
-                            anchors.rightMargin: Theme.spacing.s2
+                            anchors.leftMargin: Theme.space["2"]
+                            anchors.rightMargin: Theme.space["2"]
                             CheckBox {
                                 checked: root.selectedDebugCaseIds.indexOf(modelData.id) >= 0
                                 onCheckedChanged: root.caseSelectionToggled(modelData.id, checked)
@@ -95,13 +95,13 @@ Item {
             Label {
                 text: "最近请求"
                 color: root.textMain
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
             }
             Item { Layout.fillWidth: true }
             Label {
                 text: root.apiHistory.length + " 条"
                 color: root.textSubtle
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
             }
         }
 
@@ -113,7 +113,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 color: Theme.token("color-bg-subtle", root.dark)
-                radius: Theme.radius.md
+                radius: Theme.radii.md
             }
             Column {
                 id: historyColumn
@@ -124,16 +124,16 @@ Item {
                         required property var modelData
                         width: historyColumn.width
                         height: 34
-                        radius: Theme.radius.xs
+                        radius: Theme.radii.xs
                         color: historyMouse.containsMouse ? Theme.token("color-bg-subtle-2", root.dark) : "transparent"
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing.s2
-                            anchors.rightMargin: Theme.spacing.s2
+                            anchors.leftMargin: Theme.space["2"]
+                            anchors.rightMargin: Theme.space["2"]
                             Label {
                                 text: modelData.method || "GET"
                                 color: root.methodColorFn(modelData.method || "GET")
-                                font.pixelSize: Theme.typeScale.caption
+                                font.pixelSize: Theme.fontSize.caption
                                 font.bold: true
                                 Layout.preferredWidth: 52
                             }
@@ -166,7 +166,7 @@ Item {
             visible: ApiUtils.requestModeForMethod(root.currentMethod) === "websocket"
             text: "WebSocket 时间线 - " + root.wsStatusText
             color: root.textMain
-            font.pixelSize: Theme.typeScale.body
+            font.pixelSize: Theme.fontSize.body
         }
         UiTextArea {
             Layout.fillWidth: true

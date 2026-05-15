@@ -27,7 +27,7 @@ Item {
     Rectangle {
         id: trigger
         anchors.fill: parent
-        radius: Theme.radius.xs
+        radius: Theme.radii.xs
         color: triggerMouse.containsMouse || popup.opened
             ? Theme.token("color-bg-subtle", root.dark)
             : Theme.token("color-bg-subtle-2", root.dark)
@@ -36,17 +36,17 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Theme.spacing.s2
-            anchors.rightMargin: Theme.spacing.s1
-            spacing: Theme.spacing.s1
+            anchors.leftMargin: Theme.space["2"]
+            anchors.rightMargin: Theme.space["1"]
+            spacing: Theme.space["1"]
 
             Label {
                 text: root.value || "string"
                 Layout.fillWidth: true
                 color: root.textMain
                 elide: Text.ElideRight
-                font.family: "JetBrains Mono"
-                font.pixelSize: Theme.typeScale.caption
+                font.family: Theme.fontFamily.mono
+                font.pixelSize: Theme.fontSize.caption
                 verticalAlignment: Text.AlignVCenter
             }
 
@@ -82,7 +82,7 @@ Item {
 
         background: UiPopupSurface {
             dark: root.dark
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             fillColor: Theme.token("color-bg-surface", root.dark)
         }
 
@@ -100,16 +100,16 @@ Item {
 
                     width: popup.width - 8
                     height: 30
-                    radius: Theme.radius.sm
+                    radius: Theme.radii.sm
                     color: optionMouse.containsMouse || selected
                         ? Theme.token("color-bg-subtle", root.dark)
                         : "transparent"
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Theme.spacing.s2
-                        anchors.rightMargin: Theme.spacing.s2
-                        spacing: Theme.spacing.s2
+                        anchors.leftMargin: Theme.space["2"]
+                        anchors.rightMargin: Theme.space["2"]
+                        spacing: Theme.space["2"]
 
                         Label {
                             text: option.optionText
@@ -117,8 +117,8 @@ Item {
                             color: option.selected
                                 ? Theme.token("color-primary-active", root.dark)
                                 : root.textMain
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: Theme.typeScale.caption
+                            font.family: Theme.fontFamily.mono
+                            font.pixelSize: Theme.fontSize.caption
                             verticalAlignment: Text.AlignVCenter
                         }
 

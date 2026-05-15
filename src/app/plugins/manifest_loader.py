@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.paths import resource_root
+from app.logging import get_logger
 from app.plugins.manifest import (
     CommandContribution,
     ContextMatcher,
@@ -19,6 +20,10 @@ from app.plugins.manifest import (
 DEFAULT_PLUGIN_DIR_NAME = "plugins"
 DEFAULT_BUNDLED_PLUGIN_DIR_NAME = "features"
 DEFAULT_EXTERNAL_ORDER_START = 1000
+
+
+def _log():
+    return get_logger("app.plugins.manifest_loader")
 
 
 def default_bundled_plugin_dirs() -> list[Path]:
@@ -108,10 +113,10 @@ def load_plugin_manifests(
             try:
                 manifest = load_manifest_file(manifest_path)
             except Exception as exc:
-                print(f"[WARN] 插件 Manifest 加载失败: {manifest_path} - {exc}")
+                _log().warning("plugin.manifest.load_failed", "插件 Manifest 加载失败", path=str(manifest_path), error=str(exc))
                 continue
             if manifest.id in seen:
-                print(f"[WARN] 插件 id 重复，已忽略: {manifest.id} ({manifest_path})")
+                _log().warning("plugin.manifest.duplicate", "插件 id 重复，已忽略", pluginId=manifest.id, path=str(manifest_path))
                 continue
             seen.add(manifest.id)
             if manifest.order == 99:
@@ -153,6 +158,8 @@ def load_manifest_file(manifest_path: Path) -> PluginManifest:
         for item in _list(raw.get("commands"))
     ]
 
+    activation = _activation(raw.get("activation"))
+
     return PluginManifest(
         id=plugin_id,
         name=name,
@@ -164,7 +171,7 @@ def load_manifest_file(manifest_path: Path) -> PluginManifest:
         context_property=str(raw.get("contextProperty") or ""),
         category=str(raw.get("category") or "tool"),
         order=_int(raw.get("order"), 99),
-        activation=_activation(raw.get("activation")),
+        activation=activation,
         window_options=raw.get("window") if isinstance(raw.get("window"), dict) else {},
         commands=commands,
         package_dir=package_dir,
@@ -180,7 +187,7 @@ def merge_manifests(
     by_id = {manifest.id: manifest for manifest in primary}
     for manifest in secondary:
         if manifest.id in by_id:
-            print(f"[WARN] 插件 id 重复，已忽略后加载项: {manifest.id}")
+            _log().warning("plugin.manifest.duplicate_secondary", "插件 id 重复，已忽略后加载项", pluginId=manifest.id)
             continue
         by_id[manifest.id] = manifest
     return sorted(by_id.values(), key=lambda item: item.order)

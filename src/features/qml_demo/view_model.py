@@ -56,7 +56,7 @@ class QmlDemoViewModel(QObject):
 
     # ---- list items ----
     def _get_items(self) -> list[dict]: return self._filtered_items
-    items = Property("QVariantList", _get_items, constant=True)
+    items = Property("QVariantList", _get_items, notify=listDataChanged)
 
     # ---- Slots ----
     @Slot()

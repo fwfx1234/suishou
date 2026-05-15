@@ -12,15 +12,15 @@ TextArea {
     placeholderTextColor: Theme.token("color-text-secondary", dark)
     selectedTextColor: Theme.token("color-text-primary", dark)
     selectionColor: Theme.token("color-primary-active", dark)
-    font.pixelSize: Theme.typeScale.body
-    font.family: "JetBrains Mono"
-    leftPadding: Theme.spacing.s3
-    rightPadding: Theme.spacing.s3
-    topPadding: Theme.spacing.s3
-    bottomPadding: Theme.spacing.s3
+    font.pixelSize: Theme.fontSize.body
+    font.family: Theme.fontFamily.mono
+    leftPadding: Theme.space["2.5"]
+    rightPadding: Theme.space["2.5"]
+    topPadding: Theme.space["2.5"]
+    bottomPadding: Theme.space["2.5"]
 
     background: Rectangle {
-        radius: Theme.radius.md
+        radius: Theme.radii.md
         color: control.dark ? Theme.token("color-nav-icon-idle-bg", true) : Theme.token("color-bg-surface", false)
         border.width: control.activeFocus ? 2 : (control.hovered ? 1 : 0)
         border.color: control.activeFocus

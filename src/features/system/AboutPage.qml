@@ -12,21 +12,21 @@ Item {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: Theme.spacing.s2
+        spacing: Theme.space["2"]
         Rectangle {
             width: 72
             height: 72
-            radius: Theme.radius.xl + Theme.spacing.s1
+            radius: Theme.radii.xl + Theme.space["1"]
             color: Theme.token("color-nav-active-bg", dark)
-            Label { anchors.centerIn: parent; text: "DT"; font.pixelSize: Theme.typeScale.title + 2; font.bold: true; color: Theme.token("color-primary-active", dark) }
+            Label { anchors.centerIn: parent; text: "DT"; font.pixelSize: Theme.fontSize.title + 2; font.bold: true; color: Theme.token("color-primary-active", dark) }
         }
-        Label { text: "桌面工具箱"; font.bold: true; font.pixelSize: Theme.typeScale.title + 2; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; color: textMain; font.family: "IBM Plex Sans" }
+        Label { text: "桌面工具箱"; font.bold: true; font.pixelSize: Theme.fontSize.title + 2; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; color: textMain; font.family: Theme.fontFamily.ui }
         Label { text: "版本 1.0.0"; color: textMuted; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
         Label { text: "QML + PySide6"; color: textMuted; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
         Rectangle {
             width: 420
             height: 44
-            radius: Theme.radius.lg
+            radius: Theme.radii.lg
             color: panelBg
             Label {
                 anchors.centerIn: parent

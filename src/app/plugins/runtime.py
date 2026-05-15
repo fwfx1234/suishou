@@ -5,7 +5,9 @@ from typing import Callable, Protocol
 
 from PySide6.QtCore import QObject
 
+from app.logging import get_logger
 from app.plugins.manifest import LaunchMode, PluginManifest
+from app.plugins.service_registry import ServiceRegistry
 
 
 @dataclass(slots=True)
@@ -13,9 +15,8 @@ class PluginContext:
     """Services a plugin runtime can use without importing the app kernel."""
 
     command_index: object | None = None
-    dynamic_commands: object | None = None
     platform: object | None = None
-    services: dict[str, object] = field(default_factory=dict)
+    services: ServiceRegistry = field(default_factory=ServiceRegistry)
 
 
 @dataclass(slots=True)
@@ -26,6 +27,8 @@ class PluginAction:
     command_id: str
     input_text: str = ""
     payload: dict = field(default_factory=dict)
+    trace_id: str = ""
+    session_id: str = ""
 
 
 class PluginSession(Protocol):
@@ -119,7 +122,7 @@ class QmlPluginSession:
                 try:
                     dispose()
                 except Exception as exc:
-                    print(f"[WARN] ViewModel dispose 失败: {exc}")
+                    get_logger("app.plugins.runtime").warning("plugin.viewmodel.dispose_failed", "ViewModel dispose 失败", error=str(exc), pluginId=self.manifest.id)
             self._view_model.deleteLater()
             self._view_model = None
 

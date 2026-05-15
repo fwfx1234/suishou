@@ -6,12 +6,14 @@ import time
 from datetime import datetime
 from collections.abc import Mapping
 from urllib.parse import urlencode
-
-import requests
-from requests.models import PreparedRequest
+from typing import TYPE_CHECKING
 
 from .script_service import RequestDraft, ScriptService
 from .variable_service import VariableService
+
+if TYPE_CHECKING:
+    import requests
+    from requests.models import PreparedRequest
 
 
 class HttpRequestService:
@@ -29,6 +31,8 @@ class HttpRequestService:
         body_text: str,
         log_note: str = "未发起网络请求，仅生成请求详情。",
     ) -> dict[str, str]:
+        import requests
+
         draft = RequestDraft(
             method=method,
             url=url,
@@ -36,8 +40,8 @@ class HttpRequestService:
             headers=headers,
             body=body_text or "",
         )
-        prepared: PreparedRequest | None = None
-        error: requests.RequestException | None = None
+        prepared = None
+        error = None
         try:
             prepared = self._prepare_request(draft)
             details = self._request_details(prepared)
@@ -72,6 +76,8 @@ class HttpRequestService:
         assertions_text: str,
         env_vars: dict[str, str] | None = None,
     ) -> tuple[str, str, int, str, dict[str, str]]:
+        import requests
+
         env_vars = env_vars or {}
         final_url = self._resolve_url(url, env_base_url)
         draft = RequestDraft(
@@ -92,7 +98,7 @@ class HttpRequestService:
             k: self._variable_service.resolve_text(v, env_name=env_name, temporary=temporary_vars, env_vars=env_vars)
             for k, v in draft.headers.items()
         }
-        prepared: PreparedRequest | None = None
+        prepared = None
         request_details = self._request_details_from_draft(draft)
         started_at = time.perf_counter()
 
@@ -196,6 +202,8 @@ class HttpRequestService:
         assertions_text: str,
         env_vars: dict[str, str] | None = None,
     ) -> tuple[str, str, int, str, dict[str, str]]:
+        import requests
+
         env_vars = env_vars or {}
         final_url = self._resolve_url(url, env_base_url)
         if not file_path or not os.path.isfile(file_path):
@@ -267,7 +275,9 @@ class HttpRequestService:
         return f"{base}/{u}"
 
     @staticmethod
-    def _prepare_request(draft: RequestDraft) -> PreparedRequest:
+    def _prepare_request(draft: RequestDraft) -> "PreparedRequest":
+        import requests
+
         return requests.Request(
             method=draft.method,
             url=draft.url,
@@ -277,7 +287,7 @@ class HttpRequestService:
         ).prepare()
 
     @classmethod
-    def _request_details(cls, request: PreparedRequest) -> dict[str, str]:
+    def _request_details(cls, request: "PreparedRequest") -> dict[str, str]:
         body = cls._body_to_text(request.body)
         headers_text = "\n".join(f"{k}: {v}" for k, v in request.headers.items())
         request_text = "\n".join(
@@ -361,7 +371,7 @@ class HttpRequestService:
         return " ".join(parts)
 
     @staticmethod
-    def _prepared_url(prepared: PreparedRequest | None, draft: RequestDraft) -> str:
+    def _prepared_url(prepared: "PreparedRequest | None", draft: RequestDraft) -> str:
         if prepared and prepared.url:
             return prepared.url
         return draft.url
@@ -374,9 +384,9 @@ class HttpRequestService:
         env_base_url: str,
         resolved_url: str,
         draft: RequestDraft,
-        prepared: PreparedRequest | None,
-        response: requests.Response | None,
-        error: requests.RequestException | None,
+        prepared: "PreparedRequest | None",
+        response: "requests.Response | None",
+        error: "requests.RequestException | None",
         elapsed_ms: int | None,
         temporary_vars: Mapping[str, object],
         note: str = "",

@@ -2,27 +2,23 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 from uuid import uuid4
 from base64 import b64encode
 from urllib.parse import quote
 
-import yaml
 from app.storage import SQLiteDatabase
 
 from .case_service import DebugCaseService
 from .db import ApiDatabase
-from .http_service import HttpRequestService
 from .repositories.collection_repo import CollectionRepository
 from .repositories.environment_repo import EnvironmentRepository
 from .repositories.tab_repo import TabRepository
 from .script_service import ScriptService
 from .variable_service import VariableService
-from .ws_service import WebSocketSessionService
 
 
 class ApiTestService:
-    def __init__(self, database: SQLiteDatabase | Path | None = None) -> None:
+    def __init__(self, database: SQLiteDatabase) -> None:
         self._history: list[dict] = []
         self._database = ApiDatabase(database)
         self._db_path = self._database.path
@@ -31,9 +27,25 @@ class ApiTestService:
         self._tabs = TabRepository(self._database.storage)
         self._variables = VariableService(self._database.storage)
         self._scripts = ScriptService()
-        self._http = HttpRequestService(self._variables, self._scripts)
-        self._ws = WebSocketSessionService(self._database.storage, self._variables)
+        self._http_service = None
+        self._ws_service = None
         self._cases = DebugCaseService(self._database.storage)
+
+    @property
+    def _http(self):
+        if self._http_service is None:
+            from .http_service import HttpRequestService
+
+            self._http_service = HttpRequestService(self._variables, self._scripts)
+        return self._http_service
+
+    @property
+    def _ws(self):
+        if self._ws_service is None:
+            from .ws_service import WebSocketSessionService
+
+            self._ws_service = WebSocketSessionService(self._database.storage, self._variables)
+        return self._ws_service
 
     def list_tabs(self) -> list[dict]:
         return self._tabs.list_tabs()
@@ -159,7 +171,12 @@ class ApiTestService:
 
     def import_openapi(self, path: str) -> tuple[list[dict], list[dict]]:
         content = Path(path).read_text(encoding="utf-8")
-        spec = yaml.safe_load(content) if path.lower().endswith((".yml", ".yaml")) else json.loads(content)
+        if path.lower().endswith((".yml", ".yaml")):
+            import yaml
+
+            spec = yaml.safe_load(content)
+        else:
+            spec = json.loads(content)
         paths = spec.get("paths", {}) or {}
         items: list[dict] = []
         for p, meta in paths.items():
@@ -447,7 +464,8 @@ class ApiTestService:
         return [dict(item) for item in self._history[:limit]]
 
     def close(self) -> None:
-        self._ws.disconnect_all()
+        if self._ws_service is not None:
+            self._ws_service.disconnect_all()
 
     @staticmethod
     def _parse_key_value_text(text: str) -> dict[str, str]:

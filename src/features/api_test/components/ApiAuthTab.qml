@@ -25,15 +25,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s3
-        spacing: Theme.spacing.s3
+        anchors.margins: Theme.space["2.5"]
+        spacing: Theme.space["2.5"]
 
         RowLayout {
-            spacing: Theme.spacing.s3
+            spacing: Theme.space["2.5"]
             Label {
                 text: "认证方式"
                 color: root.textMain
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
             }
             UiComboBox {
                 id: authTypeCombo
@@ -72,7 +72,7 @@ Item {
         Label {
             text: "Bearer 会自动写入 Authorization 头"
             color: root.textMuted
-            font.pixelSize: Theme.typeScale.caption
+            font.pixelSize: Theme.fontSize.caption
         }
         Item { Layout.fillHeight: true }
     }

@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Slider 滑块"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'Slider {  from: 0;  to: 100;  value: 50;  onValueChanged: ...  }' }
             }
             RowLayout { spacing: 12
@@ -35,7 +35,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "ProgressBar 进度条"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'ProgressBar {  from: 0;  to: 100;  value: 75  }' }
             }
             ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: quality.value
@@ -48,7 +48,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "SpinBox 数字输入"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'SpinBox {  from: 0;  to: 100;  value: 50;  editable: true  }' }
             }
             RowLayout { SpinBox { id: sp; from: 0; to: 100; value: 50; editable: true; Layout.preferredWidth: 120 } Label { text: "值: " + sp.value; font.pixelSize: 14; font.bold: true; color: primary; Layout.leftMargin: 12 } }

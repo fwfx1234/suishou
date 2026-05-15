@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "RowLayout 水平排列"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "RowLayout { spacing: 8  ...  }  // 子元素自动水平排列" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; border.width: 1; border.color: primary; color: "transparent"
@@ -31,7 +31,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "ColumnLayout 垂直排列"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "ColumnLayout { spacing: 6  ...  }  // 子元素自动垂直排列" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 90; radius: 8; border.width: 1; border.color: primary; color: "transparent"
@@ -44,7 +44,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Grid / GridLayout 网格"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "GridLayout { columns: 3;  rowSpacing: 4;  columnSpacing: 4  ...  }" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 64; radius: 8; border.width: 1; border.color: primary; color: "transparent"
@@ -57,7 +57,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "anchors 锚定"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "anchors.left: parent.left   anchors.top: parent.top   anchors.centerIn: parent" }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 56; radius: 8; border.width: 1; border.color: primary; color: "transparent"

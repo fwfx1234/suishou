@@ -7,10 +7,10 @@ from .view_model import ApiTestViewModel
 
 
 def _create_view_model(ctx: PluginContext) -> ApiTestViewModel:
-    storage = ctx.services.get("storage")
-    if isinstance(storage, StorageManager):
-        return ApiTestViewModel(storage.database("api_test.db"))
-    return ApiTestViewModel()
+    storage = ctx.services.storage
+    if not isinstance(storage, StorageManager):
+        raise RuntimeError("Storage manager is unavailable")
+    return ApiTestViewModel(storage.database("api_test.db"))
 
 
 def create_runtime() -> SimpleQmlRuntime:

@@ -66,10 +66,14 @@ class PlatformApi:
     def plugin_cache_dir(self) -> Path:
         return self.storage.cache_root
 
-    def scan_applications(self) -> list[AppEntry]:
+    def scan_applications(self, *, extract_icons: bool = True) -> list[AppEntry]:
         icon_dir = self.cache_dir() / "app_icons"
-        icon_dir.mkdir(parents=True, exist_ok=True)
-        return self._services.app_indexer.scan_apps(icon_dir)
+        if extract_icons:
+            icon_dir.mkdir(parents=True, exist_ok=True)
+        return self._services.app_indexer.scan_apps(
+            icon_dir if extract_icons else None,
+            extract_icons=extract_icons,
+        )
 
     def system_commands(self) -> list[SystemCommand]:
         return self._services.system_commands.commands()

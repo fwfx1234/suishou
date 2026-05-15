@@ -8,7 +8,7 @@ Button {
     property bool dark: false
     property string variant: "secondary" // primary, secondary, ghost
 
-    implicitHeight: Theme.spacing.s4 * 3
+    implicitHeight: Theme.space["3"] * 3
     implicitWidth: 112
     hoverEnabled: true
 
@@ -19,7 +19,7 @@ Button {
     readonly property color ghostHover: dark ? Theme.token("color-nav-icon-idle-bg", true) : Theme.token("color-bg-subtle-2", false)
 
     background: Rectangle {
-        radius: Theme.radius.md
+        radius: Theme.radii.md
         border.width: 0
         border.color: "transparent"
         color: {
@@ -33,10 +33,10 @@ Button {
 
     contentItem: Text {
         text: control.text
-        font.pixelSize: Theme.typeScale.body
+        font.pixelSize: Theme.fontSize.body
         font.bold: false
         font.weight: Font.Normal
-        font.family: "IBM Plex Sans"
+        font.family: Theme.fontFamily.ui
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         color: control.variant === "primary" ? Theme.token("color-bg-surface", false) : Theme.token("color-text-primary", control.dark)

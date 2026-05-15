@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Literal
+from typing import Callable
 
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtQml import QQmlContext
 
+from app.logging import get_logger, make_session_id
+from app.plugins.launch_request import PluginLaunchRequest
 from app.plugins.manifest import LaunchMode, PluginManifest
 from app.plugins.plugin_manager import PluginManager
 from app.plugins.runtime import (
@@ -16,16 +18,16 @@ from app.plugins.runtime import (
     PluginSession,
     QmlPluginSession,
 )
+from app.plugins.session_state import (
+    PluginHost,
+    PluginSessionState,
+    active_state,
+    reactivate_state,
+    retained_state,
+)
 
 
-SessionState = Literal[
-    "active_inline",
-    "active_list",
-    "active_window",
-    "retained_inline",
-    "retained_list",
-    "retained_window",
-]
+SessionState = PluginSessionState
 
 RetentionExpiredCallback = Callable[[str, SessionState], None]
 
@@ -58,6 +60,7 @@ class ManagedPluginSession:
     context_names: set[str] = field(default_factory=set)
     retain_timer: QTimer | None = None
     last_action: PluginAction | None = None
+    session_id: str = ""
 
 
 class PluginSessionManager:
@@ -77,6 +80,7 @@ class PluginSessionManager:
         self._on_retention_expired = on_retention_expired
         self._retention_ms = _retention_interval_ms()
         self._sessions: dict[str, ManagedPluginSession] = {}
+        self._log = get_logger("app.plugins.session_manager")
 
     def get_manifest(self, plugin_id: str) -> PluginManifest | None:
         return self._plugin_manager.get_manifest(plugin_id)
@@ -113,6 +117,23 @@ class PluginSessionManager:
             return False
         return self._can_reuse_session(record, action)
 
+    def can_reuse_request(self, request: PluginLaunchRequest) -> bool:
+        return self.can_reuse_plugin(
+            request.plugin_id,
+            command_id=request.command_id,
+            input_text=request.input_text,
+            payload=request.payload,
+        )
+
+    def open_request(self, request: PluginLaunchRequest) -> PluginSession | None:
+        return self.open_plugin(
+            request.plugin_id,
+            command_id=request.command_id,
+            input_text=request.input_text,
+            payload=request.payload,
+            preferred_host=request.preferred_host,
+        )
+
     def open_plugin(
         self,
         plugin_id: str,
@@ -120,7 +141,7 @@ class PluginSessionManager:
         command_id: str = "",
         input_text: str = "",
         payload: dict | None = None,
-        preferred_host: Literal["inline", "list", "window"] | None = None,
+        preferred_host: PluginHost | None = None,
     ) -> PluginSession | None:
         """Open a plugin, reusing a retained session when it is safe to do so.
 
@@ -145,6 +166,14 @@ class PluginSessionManager:
                 record.last_action = action
                 self._mark_session_active(record, preferred_host)
                 self._reactivate_session(record, action)
+                self._log.info(
+                    "plugin.session.reuse",
+                    "复用插件会话",
+                    pluginId=plugin_id,
+                    sessionId=record.session_id,
+                    commandId=action.command_id,
+                    traceId=action.trace_id,
+                )
                 return record.session
             self.unload_plugin(plugin_id)
 
@@ -152,14 +181,26 @@ class PluginSessionManager:
         if session is None:
             return None
         context_names = self._bind_session_context(session)
+        session_id = make_session_id()
         record = ManagedPluginSession(
             plugin_id=plugin_id,
             session=session,
             state=self._active_state_for(session.launch_mode, preferred_host),
             context_names=context_names,
             last_action=action,
+            session_id=session_id,
         )
         self._sessions[plugin_id] = record
+        self._log.info(
+            "plugin.session.open",
+            "打开插件会话",
+            pluginId=plugin_id,
+            sessionId=session_id,
+            commandId=action.command_id,
+            traceId=action.trace_id,
+            launchMode=session.launch_mode,
+            state=record.state,
+        )
         return session
 
     def plugin_launch_mode(self, plugin_id: str) -> LaunchMode | None:
@@ -179,6 +220,13 @@ class PluginSessionManager:
         record = self._sessions.get(plugin_id)
         if record is None:
             return []
+        self._log.debug(
+            "plugin.session.input_changed",
+            "插件输入变更",
+            pluginId=plugin_id,
+            sessionId=record.session_id,
+            textLength=len(text or ""),
+        )
         return record.session.on_input_changed(text)
 
     def activate_list_item(self, plugin_id: str, item_id: str) -> list[dict]:
@@ -186,6 +234,13 @@ class PluginSessionManager:
         if record is None:
             return []
         record.session.on_list_item_selected(item_id)
+        self._log.debug(
+            "plugin.session.list_item_selected",
+            "插件列表项选中",
+            pluginId=plugin_id,
+            sessionId=record.session_id,
+            itemId=item_id,
+        )
         return record.session.list_model()
 
     def activate_list_item_action(
@@ -198,12 +253,20 @@ class PluginSessionManager:
         if record is None:
             return []
         items = record.session.on_list_item_action(item_id, action_id)
+        self._log.debug(
+            "plugin.session.list_item_action",
+            "插件列表项动作",
+            pluginId=plugin_id,
+            sessionId=record.session_id,
+            itemId=item_id,
+            actionId=action_id,
+        )
         return items if items is not None else record.session.list_model()
 
     def suspend_plugin(
         self,
         plugin_id: str,
-        host: Literal["inline", "list", "window"],
+        host: PluginHost,
     ) -> None:
         """Move a live session into retained state without disposing it.
 
@@ -215,7 +278,7 @@ class PluginSessionManager:
         record = self._sessions.get(plugin_id)
         if record is None:
             return
-        record.state = self._retained_state_for(record.session.launch_mode, host)
+        record.state = retained_state(record.session.launch_mode, host)
         timer = record.retain_timer
         if timer is None:
             timer = QTimer()
@@ -225,6 +288,15 @@ class PluginSessionManager:
             )
             record.retain_timer = timer
         timer.start(self._retention_ms)
+        self._log.info(
+            "plugin.session.suspend",
+            "挂起插件会话",
+            pluginId=plugin_id,
+            sessionId=record.session_id,
+            host=host,
+            state=record.state,
+            retentionMs=self._retention_ms,
+        )
 
     def unload_plugin(self, plugin_id: str) -> None:
         """Immediately destroy a session and release its runtime."""
@@ -238,19 +310,22 @@ class PluginSessionManager:
             try:
                 record.session.close()
             except Exception as exc:
-                print(f"[WARN] plugin session close failed: {plugin_id} - {exc}")
+                self._log.warning(
+                    "plugin.session.close_failed",
+                    "插件会话关闭失败",
+                    pluginId=plugin_id,
+                    sessionId=record.session_id,
+                    error=str(exc),
+                )
+            self._log.info(
+                "plugin.session.unload",
+                "卸载插件会话",
+                pluginId=plugin_id,
+                sessionId=record.session_id,
+            )
         elif manifest is not None and manifest.context_property:
             self._qml_context.setContextProperty(manifest.context_property, None)
         self._plugin_manager.close_runtime(plugin_id)
-
-    def close_plugin(self, plugin_id: str) -> None:
-        """Backward-compatible alias for full unload.
-
-        Older call sites still use close_plugin(). Keeping the method avoids a
-        large, brittle mechanical rename while we migrate call sites gradually.
-        """
-
-        self.unload_plugin(plugin_id)
 
     def close_all(self) -> None:
         for plugin_id in list(self._sessions):
@@ -267,11 +342,14 @@ class PluginSessionManager:
         manifest = self.get_manifest(plugin_id)
         if manifest is None:
             return None
+        payload = dict(payload or {})
+        trace_id = str(payload.pop("_traceId", "") or "")
         return PluginAction(
             manifest=manifest,
             command_id=command_id or manifest.primary_command.id,
             input_text=input_text,
-            payload=dict(payload or {}),
+            payload=payload,
+            trace_id=trace_id,
         )
 
     def _create_session(self, plugin_id: str, action: PluginAction) -> PluginSession | None:
@@ -279,11 +357,11 @@ class PluginSessionManager:
 
         session = None
         old_platform = self._plugin_context.platform
-        old_service_platform = self._plugin_context.services.get("platform")
+        old_service_platform = self._plugin_context.services.platform
         if old_platform is not None and hasattr(old_platform, "for_plugin"):
             scoped_platform = old_platform.for_plugin(plugin_id)
             self._plugin_context.platform = scoped_platform
-            self._plugin_context.services["platform"] = scoped_platform
+            self._plugin_context.services.platform = scoped_platform
         try:
             session = self._plugin_manager.open_session(
                 plugin_id,
@@ -291,11 +369,11 @@ class PluginSessionManager:
                 command_id=action.command_id,
                 input_text=action.input_text,
                 payload=action.payload,
+                trace_id=action.trace_id,
             )
         finally:
             self._plugin_context.platform = old_platform
-            if old_service_platform is not None:
-                self._plugin_context.services["platform"] = old_service_platform
+            self._plugin_context.services.platform = old_service_platform
         return session
 
     def _bind_session_context(self, session: PluginSession) -> set[str]:
@@ -376,46 +454,20 @@ class PluginSessionManager:
     def _mark_session_active(
         self,
         record: ManagedPluginSession,
-        preferred_host: Literal["inline", "list", "window"] | None,
+        preferred_host: PluginHost | None,
     ) -> None:
-        if preferred_host == "window":
-            record.state = "active_window"
-            return
-        if preferred_host == "list":
-            record.state = "active_list"
-            return
-        if preferred_host == "inline":
-            record.state = "active_inline"
-            return
-        if record.state.endswith("window"):
-            record.state = "active_window"
-            return
-        if record.state.endswith("list"):
-            record.state = "active_list"
-            return
-        record.state = self._active_state_for(record.session.launch_mode, None)
+        record.state = reactivate_state(
+            record.state,
+            record.session.launch_mode,
+            preferred_host,
+        )
 
+    @staticmethod
     def _active_state_for(
-        self,
         launch_mode: LaunchMode,
-        preferred_host: Literal["inline", "list", "window"] | None,
+        preferred_host: PluginHost | None,
     ) -> SessionState:
-        if preferred_host == "window":
-            return "active_window"
-        if preferred_host == "list" or launch_mode == "list":
-            return "active_list"
-        return "active_inline" if launch_mode == "inline_view" else "active_window"
-
-    def _retained_state_for(
-        self,
-        launch_mode: LaunchMode,
-        host: Literal["inline", "list", "window"],
-    ) -> SessionState:
-        if host == "window":
-            return "retained_window"
-        if host == "list" or launch_mode == "list":
-            return "retained_list"
-        return "retained_inline"
+        return active_state(launch_mode, preferred_host)
 
     def _stop_retention_timer(
         self,
@@ -436,6 +488,13 @@ class PluginSessionManager:
         if record is None:
             return
         expired_state = record.state
+        self._log.info(
+            "plugin.session.retention_expired",
+            "插件会话保留到期",
+            pluginId=plugin_id,
+            sessionId=record.session_id,
+            state=expired_state,
+        )
         if self._on_retention_expired is not None:
             self._on_retention_expired(plugin_id, expired_state)
             return

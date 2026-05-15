@@ -6,6 +6,7 @@
   "icon": "qta:mdi6.cog-outline",
   "entrypoint": "runtime:create_settings_runtime",
   "qmlPage": "SystemSettingsPage.qml",
+  "contextProperty": "systemSettingsVm",
   "category": "system",
   "order": 8,
   "commands": [

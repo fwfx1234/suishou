@@ -11,8 +11,8 @@ Rectangle {
     property string uncheckedText: "⟩"
     signal toggleRequested(bool checked)
 
-    implicitHeight: Theme.spacing.s4 * 2 + 6
-    radius: Theme.radius.md
+    implicitHeight: Theme.space["3"] * 2 + 6
+    radius: Theme.radii.md
     color: Theme.token("color-bg-subtle", dark)
 
     MouseArea {
@@ -26,8 +26,8 @@ Rectangle {
     Label {
         anchors.centerIn: parent
         text: root.toggled ? root.checkedText : root.uncheckedText
-        font.pixelSize: Theme.typeScale.heading
-        font.family: "IBM Plex Sans"
+        font.pixelSize: Theme.fontSize.heading
+        font.family: Theme.fontFamily.ui
         color: Theme.token("color-text-regular", root.dark)
     }
 

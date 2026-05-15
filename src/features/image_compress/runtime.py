@@ -43,9 +43,10 @@ def create_runtime() -> ImageCompressRuntime:
 
 
 def _latest_clipboard_image_files(ctx: PluginContext) -> list[str]:
-    service = ctx.services.get("clipboard.background")
-    store = getattr(service, "store", None)
-    latest_item = getattr(store, "latest_item", None)
+    service = ctx.services.clipboard
+    latest_item = getattr(service, "latest_context_item", None)
+    if not callable(latest_item):
+        latest_item = getattr(service, "latest_item", None)
     if not callable(latest_item):
         return []
     try:

@@ -103,7 +103,7 @@ class MyToolViewModel(QObject):
         self.resultReady.emit(f"处理结果: {text.upper()}")
 
     def dispose(self):
-        """清理资源：停止任务、Timer 或关闭 Service。"""
+        """清理资源：停止任务、Timer 或关闭插件私有 Service。"""
         pass
 ```
 
@@ -396,7 +396,7 @@ def create_runtime():
 class MyCustomRuntime:
     def on_enter(self, ctx: PluginContext, action: PluginAction) -> PluginSession:
         # 读取 action.input_text, action.command_id, action.payload
-        # 可使用 ctx.services, ctx.dynamic_commands
+        # 可使用 ctx.services, ctx.platform
         view_model = MyViewModel(action.input_text)
         return QmlPluginSession(
             manifest=action.manifest,
@@ -419,16 +419,14 @@ def create_runtime():
 @dataclass
 class PluginContext:
     command_index: object | None        # CommandIndexDb 实例
-    dynamic_commands: object | None     # DynamicCommandRegistry 实例
     platform: object | None             # PlatformApi，插件首选入口
-    services: dict[str, object]         # 共享服务注册表
+    services: ServiceRegistry           # 共享服务注册表
 ```
 
 | 属性 | 用途 |
 |------|------|
 | `ctx.platform` | 平台能力入口，优先使用 |
-| `ctx.services["clipboard.background"]` | 获取剪切板后台服务（监听、存储、读取） |
-| `ctx.dynamic_commands` | 动态命令兼容入口，建议迁移到 `ctx.platform.commands` |
+| `ctx.services.clipboard` | 获取剪切板后台服务（监听、存储、读取） |
 | `ctx.command_index` | 读取/写入启动次数和最近使用记录 |
 
 推荐写法：
@@ -469,12 +467,14 @@ class PluginAction:
 
 ### 7.1 什么是 Session
 
-用户每启动一次插件 = 创建一个 Session。Session 的生命周期：
+用户启动插件时会创建或复用一个 Session。Session 的生命周期：
 
 ```
-打开插件 → Session 创建 → ViewModel 注入 QML → UI 加载
+打开插件 → Session 创建或复用 → ViewModel 注入 QML → UI 加载
 用户操作 → ViewModel 处理 → Signal 通知 QML
-关闭插件 → Session.close() → ViewModel 清理 → QML context 设为 null → Runtime 引用移除
+普通关闭 → suspend_plugin() → UI 隐藏或销毁 → Python Session 短期保留
+再次打开 → 可复用保留 Session
+强制关闭或保留到期 → unload_plugin() → QML context 设为 null → Session.close() → Runtime 引用释放
 ```
 
 ### 7.2 QmlPluginSession（框架提供）
@@ -523,19 +523,31 @@ class MyListSession(QmlPluginSession):
         print(f"选中: {item_id}")
 ```
 
-### 7.4 Session 关闭链路
+### 7.4 Session 挂起与卸载链路
 
 ```
-QML closePlugin("my-tool")
-  → LauncherBridge.closePlugin(plugin_id)
-  → pluginClosed.emit(plugin_id)
-  → main.py: session_mgr.close_plugin(plugin_id)
-  → PluginSessionManager.close_plugin():
-      1. session = self._sessions.pop(plugin_id)     # 移除会话引用
-      2. setContextProperty(contextProperty, None)    # QML 上下文清空
-      3. session.close()                              # dispose() + deleteLater()
-      4. plugin_manager.close_runtime(plugin_id)      # runtime.on_exit()
+QML suspendPlugin("my-tool", host)
+  → LauncherBridge.suspendPlugin(plugin_id, host)
+  → pluginSuspended.emit(plugin_id, host)
+  → LauncherRuntimeCoordinator.suspend_plugin()
+  → PluginSurfaceCoordinator.suspend(plugin_id, host)
+  → PluginSessionManager.suspend_plugin():
+      1. 保留 Python Session 与 ViewModel
+      2. 标记 retained_inline / retained_list / retained_window
+      3. 启动保留计时器
+
+QML closePlugin("my-tool") 或保留到期
+  → LauncherBridge.closePlugin(plugin_id) / retention timeout
+  → pluginClosed.emit(plugin_id) / notify_retention_expired()
+  → LauncherRuntimeCoordinator.force_close_plugin() / on_retention_expired()
+  → PluginSessionManager.unload_plugin():
+      1. session = self._sessions.pop(plugin_id)
+      2. setContextProperty(contextProperty, None)
+      3. session.close()
+      4. plugin_manager.close_runtime(plugin_id)
 ```
+
+普通关闭应优先走挂起，只有用户明确丢弃、强制关闭、保留到期或应用退出时才卸载。
 
 ---
 
@@ -652,7 +664,7 @@ def dispose(self) -> None:
 
 ### 9.1 Service 是什么
 
-Service 是**纯 Python 类**，不依赖 `QObject`、`Signal`、`Slot`。它只做业务逻辑：
+Service 是**纯 Python 类**，不依赖 `QObject`、`Signal`、`Slot`、`QTimer` 或 QML。它只做业务逻辑：
 
 ```python
 class MyService:
@@ -680,13 +692,25 @@ class MyService:
 ### 9.3 本项目中的 Service 示例
 
 ```
+src/app/services/clipboard/service.py  # 剪切板后台监听、SQLite 存储、配置监听
 src/features/api_test/service.py      # HTTP 请求、数据库、WS 连接
 src/features/qr/service.py             # 二维码生成和扫描
-src/features/clipboard/service.py      # 剪切板监听、SQLite 存储
 src/features/json_parser/service.py    # JSON 格式化、JSONPath
 ```
 
-### 9.4 ViewModel 委托 Service 的标准模式
+`features/*/service.py` 默认不能 import PySide6；需要 Timer、Signal 或 UI 回调时放在插件自己的 `view_model.py`。
+
+### 9.4 耗时任务与 UI 派发
+
+耗时任务默认使用纯 Python 并发层；service 不要 import PySide6，也不要直接操作 QML 或 ViewModel：
+
+```python
+from app.concurrency import PythonTaskRunner
+```
+
+ViewModel 如果需要把后台结果发回 QML，应在插件内自己处理 UI 线程边界。推荐做法是在 ViewModel 上定义私有 Signal，把后台回调投递回 ViewModel，再由 ViewModel emit 面向 QML 的公开 Signal。
+
+### 9.5 ViewModel 委托 Service 的标准模式
 
 ```python
 class MyViewModel(QObject):
@@ -807,7 +831,7 @@ ColumnLayout {
 
 - 页面根元素仍是 `Item`，框架用 `PluginWindow.qml` 做外壳
 - 窗口大小由 Manifest 的 `window` 字段控制
-- 用户关窗 → `closing` 信号 → `session_mgr.close_plugin()`
+- 用户普通关窗 → `closing` 信号 → `session_mgr.suspend_plugin()`；强制关闭或保留到期才 `unload_plugin()`
 
 ### 11.3 list 开发要点
 
@@ -853,21 +877,41 @@ class MyBackgroundRuntime:
 - `PluginManager.close_runtime()` **不会**关闭 `activation == "background"` 的 Runtime
 - 后台 Runtime 只在整个应用退出时由 `BackgroundManager.stop_all()` 关闭
 - 后台 Service 通过 `ctx.services` 共享，其他插件可以访问
+- Manifest 不支持 `threadedBackground`；后台 Runtime 默认在主线程启动，插件内部如需纯 Python 后台任务，应由自己的 Service 管理
+- 后台插件若创建 Qt 对象、QTimer、QApplication 相关资源，必须在主线程启动
 
 ### 12.4 剪切板插件 —— 完整案例
 
 ```python
 # runtime.py — ClipboardRuntime
+from app.services.clipboard import ClipboardService, DEFAULT_CLIPBOARD_CONFIG
+from app.storage import StorageManager
+
+SERVICE_KEY = "clipboard.background"
+
 class ClipboardRuntime:
     def on_background_start(self, ctx):
-        db_path = _clipboard_data_dir() / "clipboard.db"
-        self._service = ClipboardBackgroundService(db_path)
-        ctx.services["clipboard.background"] = self._service
+        storage = ctx.services.storage
+        if not isinstance(storage, StorageManager):
+            storage = StorageManager()
+            ctx.services.storage = storage
+        self._service = ClipboardService(
+            storage.database("clipboard.db", check_same_thread=False),
+            settings_store=storage.dict_store(
+                "clipboard/settings",
+                defaults=DEFAULT_CLIPBOARD_CONFIG,
+            ),
+            backend=create_backend(),
+        )
+        self._service.start()
+        ctx.services.clipboard = self._service
 
     def on_enter(self, ctx, action):
-        service = ctx.services["clipboard.background"]
-        return ClipboardInlineSession(action.manifest,
-            ClipboardWindowViewModel(service))
+        service = ctx.services.clipboard
+        return ClipboardInlineSession(
+            manifest=action.manifest,
+            view_model=ClipboardWindowViewModel(service),
+        )
 
     def on_background_stop(self):
         if self._service:
@@ -1012,7 +1056,7 @@ ctx.platform.commands.register(
 ctx.platform.commands.unregister("download.pause_all")
 ```
 
-`ctx.dynamic_commands` 仍可作为旧代码兼容入口，但新插件不要再直接依赖它。
+动态命令统一通过 `ctx.platform.commands` 注册和注销。
 
 ### 15.3 DynamicCommand 字段
 
@@ -1040,12 +1084,12 @@ class DynamicCommand:
 
 ```python
 # 后台插件注册服务
-ctx.services["clipboard.background"] = self._service
+ctx.services.clipboard = self._service
 
 # 其他插件读取
-service = ctx.services.get("clipboard.background")
+service = ctx.services.clipboard
 if service:
-    latest = service.store.latest_item()
+    latest = service.latest_context_item()
 ```
 
 ### 16.2 通过 manifest.json 声明依赖（建议）
@@ -1090,9 +1134,9 @@ os.startfile(...)
 | 线程 | 设置停止标志 + `thread.join()` | `ViewModel.dispose()` |
 | SQLite 连接 | `conn.close()` 或使用 `with` 语句 | Service |
 | WebSocket | `.close()` | Service / ViewModel.dispose() |
-| QML Context | `setContextProperty(name, None)` | `PluginSessionManager.close_plugin()` |
-| Runtime 引用 | `runtimes.pop(plugin_id)` | `PluginManager.close_runtime()` |
-| Python QObject | `.deleteLater()` | `QmlPluginSession.close()` |
+| QML Context | `setContextProperty(name, None)` | `PluginSessionManager.unload_plugin()` |
+| Runtime 引用 | `runtimes.pop(plugin_id)` | `PluginManager.close_runtime()`，后台插件除外 |
+| Python QObject | `.deleteLater()` | `QmlPluginSession.close()`，仅卸载时 |
 
 ### 17.2 dispose() 标准模板
 
@@ -1138,7 +1182,9 @@ class MyViewModel(QObject):
 - [ ] QML 使用 `UiButton`、`UiTextField` 等通用组件，不自己写原始 Qt 控件
 - [ ] QML 不硬编码颜色值（使用 `Theme.token()`）
 - [ ] ViewModel 有 `dispose()` 方法，清理了所有 Signal、Timer、线程
-- [ ] 非后台插件关闭后 Session 正确清理（无内存泄漏）
+- [ ] 普通关闭后 Session 可挂起复用，强制关闭或保留到期后正确卸载
+- [ ] `service.py` 不 import PySide6；Qt 相关对象放在 ViewModel 或平台 SDK 实现中
+- [ ] 需要持久化时优先使用 `ctx.platform.storage` 或 `ctx.services.storage`
 - [ ] 插件错误不导致 Launcher 崩溃（异常被捕获）
 - [ ] `keywords` 包含中文、英文，覆盖常用搜索词
 - [ ] `launchMode` 合理（inline 优先，window 用于复杂工具）

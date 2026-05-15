@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Any
 
-from app.storage import SQLiteDatabase, sqlite_database
+from app.storage import SQLiteDatabase
 
 
 class VariableService:
@@ -12,8 +11,8 @@ class VariableService:
 
     _pattern = re.compile(r"\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}")
 
-    def __init__(self, database: SQLiteDatabase | str | Path) -> None:
-        self._database = database if isinstance(database, SQLiteDatabase) else sqlite_database(database)
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
         self._db_path = self._database.path
         self._ensure_table()
 

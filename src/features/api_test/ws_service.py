@@ -1,28 +1,29 @@
 from __future__ import annotations
 
 import base64
-from pathlib import Path
 from threading import RLock
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
-from app.storage import SQLiteDatabase, sqlite_database
-from websocket import WebSocket, create_connection
+from app.storage import SQLiteDatabase
 
 from .variable_service import VariableService
+
+if TYPE_CHECKING:
+    from websocket import WebSocket
 
 
 class WebSocketSessionService:
     def __init__(
         self,
-        database: SQLiteDatabase | str | Path,
+        database: SQLiteDatabase,
         variable_service: VariableService,
     ) -> None:
-        self._database = database if isinstance(database, SQLiteDatabase) else sqlite_database(database)
+        self._database = database
         self._db_path = self._database.path
         self._variable_service = variable_service
-        self._connections: dict[str, WebSocket] = {}
+        self._connections: dict[str, "WebSocket"] = {}
         self._lock = RLock()
         self._ensure_tables()
 
@@ -63,6 +64,8 @@ class WebSocketSessionService:
         env_name: str,
         env_base_url: str = "",
     ) -> str:
+        from websocket import create_connection
+
         resolved_url = self._resolve_url(url, env_base_url, env_name=env_name)
         final_url = self._build_url(resolved_url, params, env_name=env_name)
         header_lines = [f"{k}: {self._variable_service.resolve_text(v, env_name=env_name)}" for k, v in headers.items()]

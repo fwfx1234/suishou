@@ -86,7 +86,7 @@ Item {
                 text: "剪切板"
                 font.pixelSize: 20
                 font.bold: true
-                font.family: "IBM Plex Sans"
+                font.family: Theme.fontFamily.ui
                 color: textMain
             }
 
@@ -319,7 +319,7 @@ Item {
                                     selectedTextColor: textMain
                                     selectionColor: Theme.token("color-primary-bg", dark)
                                     font.pixelSize: 12
-                                    font.family: selectedItem.itemType === "text" ? "JetBrains Mono" : "IBM Plex Sans"
+                                    font.family: selectedItem.itemType === "text" ? Theme.fontFamily.mono : Theme.fontFamily.ui
                                     background: null
                                 }
 

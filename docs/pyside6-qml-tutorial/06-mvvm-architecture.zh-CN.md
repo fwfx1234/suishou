@@ -262,7 +262,3 @@ class MyViewModel(QObject):
 3. 找到 `JsonParserPage.qml` 中绑定 ViewModel Property 的地方
 4. 对比 `src/features/api_test/view_model.py`，理解复杂 ViewModel 的结构
 5. 尝试给 JSON 解析插件加一个新功能：从 ViewModel 暴露一个 `wordCount` Property
-
----
-
-[上一章：QML 与 Python 通信（下）](05-property-binding.zh-CN.md) | [下一章：启动器原理](07-launcher-search.zh-CN.md)

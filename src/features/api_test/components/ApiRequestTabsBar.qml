@@ -16,8 +16,8 @@ Rectangle {
 
     Flickable {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing.s3
-        anchors.rightMargin: Theme.spacing.s3
+        anchors.leftMargin: Theme.space["2.5"]
+        anchors.rightMargin: Theme.space["2.5"]
         clip: true
         interactive: contentWidth > width
         boundsBehavior: Flickable.StopAtBounds
@@ -27,7 +27,7 @@ Rectangle {
         Row {
             id: tabRow
             height: parent.height
-            spacing: Theme.spacing.s2
+            spacing: Theme.space["2"]
 
             Repeater {
                 model: ["Params", "Path", "Body", "Headers", "Cookies", "Auth", "前置操作", "后置操作", "设置"]
@@ -38,7 +38,7 @@ Rectangle {
 
                     property bool active: index === root.currentTab
 
-                    width: Math.max(58, tabLabel.implicitWidth + Theme.spacing.s5)
+                    width: Math.max(58, tabLabel.implicitWidth + Theme.space["4"])
                     height: tabRow.height
                     color: active ? Theme.token("color-bg-subtle-2", root.dark) : "transparent"
 
@@ -49,7 +49,7 @@ Rectangle {
                         color: tabItem.active
                             ? Theme.token("color-primary-active", root.dark)
                             : root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                         font.bold: false
                     }
 

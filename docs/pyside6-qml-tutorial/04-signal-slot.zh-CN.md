@@ -245,7 +245,3 @@ class LauncherBridge(QObject):
 2. 在 `LauncherWindow.qml` 中加一个 `Text { text: app.greeting }` 验证
 3. 在 `app_view_model.py` 中加一个 `@Slot(str)` 方法 `setGreeting(name)`，从 QML 按钮调用它
 4. 运行 `uv run app` 验证
-
----
-
-[下一章：QML 与 Python 通信（下）——Property 和数据绑定](05-property-binding.zh-CN.md)

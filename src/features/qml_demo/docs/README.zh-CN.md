@@ -7,7 +7,7 @@
 3. 搜索 `QML 学习演示` 或 `demo`
 4. 进入插件，左侧边栏选择学习主题
 
-## 10 课内容概要
+## 17 课内容概要
 
 | 课程 | 内容 | 学到的技术 |
 |------|------|-----------|
@@ -21,6 +21,13 @@
 | 第 8 课：主题系统 | Theme.token()、深浅色切换 | 设计令牌 |
 | 第 9 课：动画效果 | Behavior、NumberAnimation、RotationAnimation | 声明式动画 |
 | 第 10 课：Dialog 弹窗 | MessageDialog、FileDialog、Popup | 弹窗系统 |
+| 第 11 课：Loader 加载 | Loader、动态组件、source 切换 | 按需加载 |
+| 第 12 课：TabBar 选项卡 | TabBar、TabButton、StackLayout | 多页面切换 |
+| 第 13 课：Timer + 状态 | Timer、states、transitions | 定时器与状态机 |
+| 第 14 课：Slider 滑块 | Slider、SpinBox、RangeSlider | 数值输入 |
+| 第 15 课：ToolTip/Menu | ToolTip、Menu、MenuItem | 辅助交互 |
+| 第 16 课：Gradient/Flow | Gradient、Flow、GridLayout | 视觉与自适应排布 |
+| 第 17 课：Keys/Shortcut | Keys、Shortcut、focus | 键盘事件 |
 
 ## 代码结构
 
@@ -30,7 +37,7 @@ src/features/qml_demo/
 ├── runtime.py               # Runtime 工厂
 ├── view_model.py            # 交互式 ViewModel（@Property + @Slot）
 ├── QmlDemoPage.qml          # 主页面（侧边栏 + StackLayout）
-├── pages/                   # 10 个演示页面
+├── pages/                   # 17 个演示页面
 │   ├── BasicElementsPage.qml
 │   ├── LayoutPage.qml
 │   ├── BindingPage.qml
@@ -40,7 +47,14 @@ src/features/qml_demo/
 │   ├── ListViewPage.qml
 │   ├── ThemePage.qml
 │   ├── AnimationPage.qml
-│   └── DialogPage.qml
+│   ├── DialogPage.qml
+│   ├── LoaderPage.qml
+│   ├── TabBarPage.qml
+│   ├── TimerStatePage.qml
+│   ├── InputWidgetsPage.qml
+│   ├── TooltipMenuPage.qml
+│   ├── GradientFlowPage.qml
+│   └── KeysShortcutPage.qml
 └── docs/
     └── README.zh-CN.md      # 本文档
 ```
@@ -74,16 +88,17 @@ Flickable {                      ← 可滚动容器
 
 | 方面 | qml-demo | api_test |
 |------|---------|---------|
-| QML 行数 | ~800（10 页） | ~500（单页，组件化） |
+| QML 结构 | 17 页演示页面 | 单页入口，多组件拆分 |
 | ViewModel 行数 | ~100 | ~970 |
 | Service | 无 | 5 个 Service 类 |
-| 组件数量 | 10 页面 | 16 个组件 |
+| 组件数量 | 17 个主题页面 | 16 个组件 |
 | launchMode | inline_view | window |
 | 适合 | 学习 QML 基础 | 学习复杂 MVVM |
 
 ## 延伸学习
 
-1. 读 `src/features/json_parser/` — 最简单的完整插件
-2. 读 `src/features/clipboard/` — 后台插件案例
-3. 读 `src/features/api_test/` — 复杂全功能插件案例
-4. 读教程系列 `docs/pyside6-qml-tutorial/` — 从零开始的完整教程
+1. 读 `docs/project-design.zh-CN.md` — 当前项目架构和插件边界
+2. 读 `src/features/json_parser/` — 最简单的完整插件
+3. 读 `src/features/clipboard/` — 后台插件案例
+4. 读 `src/features/api_test/` — 复杂全功能插件案例
+5. 读教程系列 `docs/pyside6-qml-tutorial/` — 从零开始的完整教程

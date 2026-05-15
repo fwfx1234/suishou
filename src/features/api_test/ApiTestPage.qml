@@ -18,46 +18,8 @@ Item {
     property int activeBodyRow: -1
     property bool showMagicPanel: false
     property bool applyingTabToActionBar: false
-    readonly property var vmFallback: ({
-        endpointTabs: [],
-        currentEndpointTab: -1,
-        environments: [],
-        currentEnvIndex: -1,
-        requestSending: false,
-        queryParams: [],
-        pathParams: [],
-        bodyModes: ["none", "x-www-form-urlencoded", "JSON", "XML", "Text", "file"],
-        currentBodyMode: 0,
-        bodyFormRows: [],
-        bodyText: "",
-        bodyFilePath: "",
-        bodyFileParamName: "file",
-        headersRows: [],
-        cookieRows: [],
-        authTypeValue: "none",
-        authValueText: "",
-        preOpsText: "",
-        postOpsText: "",
-        debugCases: [],
-        selectedDebugCaseIds: [],
-        apiHistory: [],
-        wsTimeline: [],
-        wsStatusText: "未连接",
-        wsStatus: "idle",
-        wsEncoding: "text",
-        mockMode: false,
-        assertionsEnabled: true,
-        responseTitle: "返回响应",
-        responseBody: "",
-        responseHeaders: "",
-        responseRequest: "",
-        responseCurl: "",
-        responseLog: "",
-        responseLogs: [],
-        collectionTree: []
-    })
-    readonly property var vm: apiTestVm || vmFallback
-    readonly property var appVm: app || ({ theme: "light" })
+    readonly property var vm: apiTestVm
+    readonly property var appVm: app
 
     enabled: !!apiTestVm
 
@@ -213,10 +175,7 @@ Item {
 
     Component.onCompleted: {
         if (!apiTestVm) return
-        apiTestVm.loadEnvironments()
-        apiTestVm.loadCollectionTree()
-        apiTestVm.loadTabs()
-        apiTestVm.loadApiHistory()
+        apiTestVm.loadInitialData()
     }
 
     onCurrentTabChanged: { root.showMagicPanel = false }
@@ -322,7 +281,7 @@ Item {
                     visible: ApiUtils.requestModeForMethod(requestActionBar.getMethodText()) === "websocket"
                     color: root.panelBg
                     RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: Theme.spacing.s3; anchors.rightMargin: Theme.spacing.s3
+                        anchors.fill: parent; anchors.leftMargin: Theme.space["2.5"]; anchors.rightMargin: Theme.space["2.5"]
                         UiButton { text: "连接"; dark: root.dark; variant: "primary"; onClicked: connectWs() }
                         UiButton { text: "接收"; dark: root.dark; variant: "secondary"; onClicked: receiveWs() }
                         UiButton { text: "断开"; dark: root.dark; variant: "secondary"; onClicked: disconnectWs() }
@@ -441,7 +400,7 @@ Item {
                                 Layout.fillWidth: true; Layout.fillHeight: true
                                 UiTextArea {
                                     id: preOpsInput
-                                    anchors.fill: parent; anchors.margins: Theme.spacing.s3
+                                    anchors.fill: parent; anchors.margins: Theme.space["2.5"]
                                     dark: root.dark
                                     placeholderText: "前置操作：每行一条 KV，发送请求前会附加全局参数。"
                                     wrapMode: TextEdit.NoWrap
@@ -453,7 +412,7 @@ Item {
                                 Layout.fillWidth: true; Layout.fillHeight: true
                                 UiTextArea {
                                     id: postOpsInput
-                                    anchors.fill: parent; anchors.margins: Theme.spacing.s3
+                                    anchors.fill: parent; anchors.margins: Theme.space["2.5"]
                                     dark: root.dark
                                     placeholderText: "后置操作：响应后执行的断言。\nstatus == 200\nbody contains \"ok\""
                                     wrapMode: TextEdit.NoWrap

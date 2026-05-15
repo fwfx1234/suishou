@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from app.storage import SQLiteDatabase
@@ -43,20 +42,26 @@ class ApiTestViewModel(QObject):
     apiHistoryChanged = Signal()
     responseChanged = Signal()
     wsStatusChanged = Signal()
+    _uiCallback = Signal(object)
 
-    def __init__(self, database: SQLiteDatabase | Path | None = None) -> None:
+    def __init__(self, database: SQLiteDatabase) -> None:
         super().__init__()
         self._service = ApiTestService(database)
         self._disposed = False
+        self._uiCallback.connect(self._run_ui_callback)
 
         self._editor = RequestEditorState()
         self._sender = RequestSenderCoordinator(
             self._service,
-            on_response=self._emit_api_response,
-            on_history=self._emit_api_history,
-            on_sending=self._emit_api_sending,
-            on_ws_timeline=self._emit_ws_timeline,
-            on_ws_status=self._emit_ws_status,
+            on_response=lambda title, body, details: self._post_ui(
+                lambda: self._emit_api_response(title, body, details)
+            ),
+            on_history=lambda items: self._post_ui(lambda: self._emit_api_history(items)),
+            on_sending=lambda sending: self._post_ui(lambda: self._emit_api_sending(sending)),
+            on_ws_timeline=lambda tab_id: self._post_ui(lambda: self._emit_ws_timeline(tab_id)),
+            on_ws_status=lambda tab_id, status, message: self._post_ui(
+                lambda: self._emit_ws_status(tab_id, status, message)
+            ),
         )
         self._tabs = TabsController(
             self._editor,
@@ -302,6 +307,14 @@ class ApiTestViewModel(QObject):
     def _body_text_for_request(self) -> str:
         return self._editor.body_text_for_request()
 
+    def _post_ui(self, fn) -> None:
+        self._uiCallback.emit(fn)
+
+    @Slot(object)
+    def _run_ui_callback(self, fn: object) -> None:
+        if not self._disposed and callable(fn):
+            fn()
+
     def _emit_api_response(self, title: str, body: str, details: dict) -> None:
         self._response.apply(title, body, details)
         self.responseChanged.emit()
@@ -398,6 +411,13 @@ class ApiTestViewModel(QObject):
     @Slot()
     def loadTabs(self) -> None:
         self.tabsLoaded.emit(self._service.list_tabs())
+
+    @Slot()
+    def loadInitialData(self) -> None:
+        self.environmentsLoaded.emit(self._service.list_environments())
+        self.collectionTreeLoaded.emit(self._service.load_collection_tree())
+        self.tabsLoaded.emit(self._service.list_tabs())
+        self.apiHistoryUpdated.emit(self._service.list_history())
 
     @Slot()
     def loadApiHistory(self) -> None:

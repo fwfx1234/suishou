@@ -14,9 +14,9 @@ Item {
     readonly property color textMuted: Theme.token("color-text-regular", dark)
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s2
-        Label { text: "抓包工具"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2"]
+        Label { text: "抓包工具"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         RowLayout {
             Label { text: running ? "● 代理运行中" : "● 代理已停止"; color: running ? Theme.token("color-success", dark) : Theme.token("color-danger", dark) }
             UiButton {
@@ -46,14 +46,14 @@ Item {
             model: rows
             delegate: Rectangle {
                 width: ListView.view.width
-                height: Theme.spacing.s4 * 3
+                height: Theme.space["3"] * 3
                 color: index % 2 === 0 ? panelBg : Theme.token("color-bg-subtle-2", dark)
                 border.color: "transparent"
-                radius: Theme.radius.md
+                radius: Theme.radii.md
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing.s2
-                    anchors.rightMargin: Theme.spacing.s2
+                    anchors.leftMargin: Theme.space["2"]
+                    anchors.rightMargin: Theme.space["2"]
                     Label { text: modelData.method; Layout.preferredWidth: 60; color: Theme.token("color-primary-active", dark); font.bold: true }
                     Label {
                         text: modelData.path

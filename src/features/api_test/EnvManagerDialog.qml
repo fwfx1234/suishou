@@ -250,13 +250,13 @@ Dialog {
 
     background: Rectangle {
         color: Theme.token("color-bg-surface", dialog.dark)
-        radius: Theme.radius.md
+        radius: Theme.radii.md
         border.color: Theme.token("color-border-default", dialog.dark)
     }
 
     contentItem: Rectangle {
         color: Theme.token("color-bg-surface", dialog.dark)
-        radius: Theme.radius.md
+        radius: Theme.radii.md
 
         ColumnLayout {
             anchors.fill: parent
@@ -305,13 +305,13 @@ Dialog {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.spacing.s3
-                        spacing: Theme.spacing.s2
+                        anchors.margins: Theme.space["2.5"]
+                        spacing: Theme.space["2"]
 
                         Label {
                             text: "环境"
                             color: Theme.token("color-text-regular", dialog.dark)
-                            font.pixelSize: Theme.typeScale.caption
+                            font.pixelSize: Theme.fontSize.caption
                         }
 
                         Repeater {
@@ -322,16 +322,16 @@ Dialog {
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 34
-                                radius: Theme.radius.xs
+                                radius: Theme.radii.xs
                                 color: envMouse.containsMouse || index === dialog.selectedIndex
                                     ? Theme.token("color-nav-item-active-bg", dialog.dark)
                                     : "transparent"
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.leftMargin: Theme.spacing.s2
-                                    anchors.rightMargin: Theme.spacing.s2
-                                    spacing: Theme.spacing.s2
+                                    anchors.leftMargin: Theme.space["2"]
+                                    anchors.rightMargin: Theme.space["2"]
+                                    spacing: Theme.space["2"]
 
                                     Label {
                                         text: (modelData.name || "环").slice(0, 1)
@@ -348,7 +348,7 @@ Dialog {
                                         color: index === dialog.selectedIndex
                                             ? Theme.token("color-primary-active", dialog.dark)
                                             : Theme.token("color-text-primary", dialog.dark)
-                                        font.pixelSize: Theme.typeScale.body
+                                        font.pixelSize: Theme.fontSize.body
                                     }
                                 }
 
@@ -476,7 +476,7 @@ Dialog {
                             Layout.fillWidth: true
                             color: Theme.token("color-text-primary", dialog.dark)
                             font.bold: true
-                            font.pixelSize: Theme.typeScale.body
+                            font.pixelSize: Theme.fontSize.body
                         }
 
                         UiButton {
@@ -537,9 +537,9 @@ Dialog {
 
                                             RowLayout {
                                                 anchors.fill: parent
-                                                anchors.leftMargin: Theme.spacing.s3
-                                                anchors.rightMargin: Theme.spacing.s3
-                                                spacing: Theme.spacing.s3
+                                                anchors.leftMargin: Theme.space["2.5"]
+                                                anchors.rightMargin: Theme.space["2.5"]
+                                                spacing: Theme.space["2.5"]
 
                                                 UiCheckBox {
                                                     dark: dialog.dark
@@ -551,7 +551,7 @@ Dialog {
                                                     Layout.preferredWidth: 180
                                                     text: modelData.key || ""
                                                     color: Theme.token("color-text-primary", dialog.dark)
-                                                    font.family: "JetBrains Mono"
+                                                    font.family: Theme.fontFamily.mono
                                                     background: Rectangle { color: "transparent" }
                                                     onEditingFinished: dialog.updateVariable(index, "key", text.trim())
                                                 }
@@ -560,7 +560,7 @@ Dialog {
                                                     Layout.fillWidth: true
                                                     text: modelData.value || ""
                                                     color: Theme.token("color-text-primary", dialog.dark)
-                                                    font.family: "JetBrains Mono"
+                                                    font.family: Theme.fontFamily.mono
                                                     background: Rectangle { color: "transparent" }
                                                     onEditingFinished: dialog.updateVariable(index, "value", text)
                                                 }
@@ -592,7 +592,7 @@ Dialog {
                                             anchors.centerIn: parent
                                             text: "暂无变量"
                                             color: Theme.token("color-text-secondary", dialog.dark)
-                                            font.pixelSize: Theme.typeScale.body
+                                            font.pixelSize: Theme.fontSize.body
                                         }
                                     }
                                 }
@@ -613,7 +613,7 @@ Dialog {
                             Layout.fillWidth: true
                             color: Theme.token("color-text-primary", dialog.dark)
                             font.bold: true
-                            font.pixelSize: Theme.typeScale.body
+                            font.pixelSize: Theme.fontSize.body
                         }
 
                         UiButton {
@@ -629,7 +629,7 @@ Dialog {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        radius: Theme.radius.xs
+                        radius: Theme.radii.xs
                         color: "transparent"
                         border.color: Theme.token("color-border-default", dialog.dark)
                         clip: true
@@ -645,14 +645,14 @@ Dialog {
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.leftMargin: Theme.spacing.s3
-                                    anchors.rightMargin: Theme.spacing.s3
-                                    spacing: Theme.spacing.s3
+                                    anchors.leftMargin: Theme.space["2.5"]
+                                    anchors.rightMargin: Theme.space["2.5"]
+                                    spacing: Theme.space["2.5"]
 
-                                    Label { text: "启用"; Layout.preferredWidth: 44; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.typeScale.caption }
-                                    Label { text: "Header名"; Layout.preferredWidth: 180; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.typeScale.caption }
-                                    Label { text: "Header值"; Layout.fillWidth: true; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.typeScale.caption }
-                                    Label { text: "删除"; Layout.preferredWidth: 48; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.typeScale.caption; horizontalAlignment: Text.AlignRight }
+                                    Label { text: "启用"; Layout.preferredWidth: 44; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.fontSize.caption }
+                                    Label { text: "Header名"; Layout.preferredWidth: 180; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.fontSize.caption }
+                                    Label { text: "Header值"; Layout.fillWidth: true; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.fontSize.caption }
+                                    Label { text: "删除"; Layout.preferredWidth: 48; color: Theme.token("color-text-regular", dialog.dark); font.pixelSize: Theme.fontSize.caption; horizontalAlignment: Text.AlignRight }
                                 }
                             }
 
@@ -679,9 +679,9 @@ Dialog {
 
                                             RowLayout {
                                                 anchors.fill: parent
-                                                anchors.leftMargin: Theme.spacing.s3
-                                                anchors.rightMargin: Theme.spacing.s3
-                                                spacing: Theme.spacing.s3
+                                                anchors.leftMargin: Theme.space["2.5"]
+                                                anchors.rightMargin: Theme.space["2.5"]
+                                                spacing: Theme.space["2.5"]
 
                                                 UiCheckBox {
                                                     dark: dialog.dark
@@ -693,7 +693,7 @@ Dialog {
                                                     Layout.preferredWidth: 180
                                                     text: modelData.key || ""
                                                     color: Theme.token("color-text-primary", dialog.dark)
-                                                    font.family: "JetBrains Mono"
+                                                    font.family: Theme.fontFamily.mono
                                                     placeholderText: "Header-Name"
                                                     placeholderTextColor: Theme.token("color-text-secondary", dialog.dark)
                                                     background: Rectangle { color: "transparent" }
@@ -704,7 +704,7 @@ Dialog {
                                                     Layout.fillWidth: true
                                                     text: modelData.value || ""
                                                     color: Theme.token("color-text-primary", dialog.dark)
-                                                    font.family: "JetBrains Mono"
+                                                    font.family: Theme.fontFamily.mono
                                                     placeholderText: "Header-Value"
                                                     placeholderTextColor: Theme.token("color-text-secondary", dialog.dark)
                                                     background: Rectangle { color: "transparent" }
@@ -738,7 +738,7 @@ Dialog {
                                             anchors.centerIn: parent
                                             text: "暂无公共Header"
                                             color: Theme.token("color-text-secondary", dialog.dark)
-                                            font.pixelSize: Theme.typeScale.body
+                                            font.pixelSize: Theme.fontSize.body
                                         }
                                     }
                                 }

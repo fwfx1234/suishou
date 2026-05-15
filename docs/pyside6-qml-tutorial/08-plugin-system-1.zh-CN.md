@@ -282,7 +282,3 @@ def create_about_runtime():
 2. 跟踪 `load_all_plugin_manifests()` 的执行路径
 3. 在 `_load_runtime()` 中加 `print()`，验证非后台插件只在启动时才 import
 4. 尝试理解合成包机制（`_ensure_plugin_packages`）如何让插件内 `from .view_model import ...` 正常工作
-
----
-
-[上一章：启动器原理](07-launcher-search.zh-CN.md) | [下一章：插件系统（下）](09-plugin-system-2.zh-CN.md)

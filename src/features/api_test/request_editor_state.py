@@ -257,9 +257,9 @@ class RequestEditorState:
     def apply_tab(self, tab: dict, environments: list[dict]) -> int | None:
         self.auth_type_value = str(tab.get("authType") or "none")
         self.auth_value_text = str(tab.get("authValue") or "")
-        self.headers_rows = parse_header_rows(str(tab.get("headersText") or ""))
+        self.headers_rows = normalize_rows(parse_header_rows(str(tab.get("headersText") or "")), empty_kv_row())
         self.cookies_text = str(tab.get("cookiesText") or "")
-        self.cookie_rows = parse_cookie_rows(self.cookies_text)
+        self.cookie_rows = normalize_rows(parse_cookie_rows(self.cookies_text), empty_kv_row())
         try:
             body_per_mode = json.loads(str(tab.get("bodyText") or "{}"))
         except Exception:
@@ -267,10 +267,11 @@ class RequestEditorState:
         self.body_per_mode = body_per_mode if isinstance(body_per_mode, dict) else {}
         self.current_body_mode = next((i for i, mode in enumerate(self.body_modes) if mode == str(tab.get("bodyMode") or "")), 0)
         self.load_body_from_mode()
+        self.body_form_rows = normalize_rows(self.body_form_rows, empty_form_row())
         self.pre_ops_text = str(tab.get("preOpsText") or "")
         self.post_ops_text = str(tab.get("postOpsText") or "")
-        self.query_params = parse_kv(str(tab.get("paramsText") or ""))
-        self.path_params = parse_kv(str(tab.get("pathParamsText") or ""))
+        self.query_params = normalize_rows(parse_kv(str(tab.get("paramsText") or "")), empty_kv_row())
+        self.path_params = normalize_rows(parse_kv(str(tab.get("pathParamsText") or "")), empty_kv_row())
         self.mock_mode = bool(tab.get("mockMode"))
         env_base = str(tab.get("envBaseUrl") or "")
         for index, env in enumerate(environments):

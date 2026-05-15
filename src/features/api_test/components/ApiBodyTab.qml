@@ -69,9 +69,9 @@ Item {
             color: root.panelBg
             Row {
                 anchors.left: parent.left
-                anchors.leftMargin: Theme.spacing.s3
+                anchors.leftMargin: Theme.space["2.5"]
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.spacing.s3
+                spacing: Theme.space["2.5"]
                 Repeater {
                     model: root.bodyModes
                     delegate: Rectangle {
@@ -88,7 +88,7 @@ Item {
                             anchors.centerIn: parent
                             text: modelData
                             color: index === root.currentBodyMode ? "white" : root.textMuted
-                            font.pixelSize: Theme.typeScale.caption
+                            font.pixelSize: Theme.fontSize.caption
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -131,15 +131,15 @@ Item {
 
             ColumnLayout {
                 anchors.fill: parent
-                spacing: Theme.spacing.s2
+                spacing: Theme.space["2"]
                 visible: root.currentBodyModeIndexIsFile(root.currentBodyMode)
-                anchors.margins: Theme.spacing.s3
+                anchors.margins: Theme.space["2.5"]
 
                 RowLayout {
                     Label {
                         text: "文件路径"
                         color: root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                     }
                     UiTextField {
                         Layout.fillWidth: true
@@ -162,7 +162,7 @@ Item {
                     Label {
                         text: "参数名"
                         color: root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                     }
                     UiTextField {
                         Layout.preferredWidth: 180
@@ -178,7 +178,7 @@ Item {
                     visible: root.bodyFilePath.length === 0
                     text: "选择文件后将以 multipart/form-data 方式上传"
                     color: root.textSubtle
-                    font.pixelSize: Theme.typeScale.caption
+                    font.pixelSize: Theme.fontSize.caption
                 }
             }
 
@@ -197,7 +197,7 @@ Item {
                 visible: root.showMagicPanel
                 anchors.top: parent.top
                 anchors.right: parent.right
-                anchors.rightMargin: Theme.spacing.s3
+                anchors.rightMargin: Theme.space["2.5"]
                 width: 320
                 height: 286
                 z: 20

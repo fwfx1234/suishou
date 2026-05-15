@@ -15,7 +15,7 @@ Rectangle {
     signal insertRequested(string valueText)
     signal closeRequested()
 
-    radius: Theme.radius.lg
+    radius: Theme.radii.lg
     color: root.panelBg
     border.color: root.panelBorder
 
@@ -28,8 +28,8 @@ Rectangle {
             color: "transparent"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.spacing.s3
-                anchors.rightMargin: Theme.spacing.s3
+                anchors.leftMargin: Theme.space["2.5"]
+                anchors.rightMargin: Theme.space["2.5"]
                 Label { text: "插入动态值"; color: root.textMain; font.bold: false; Layout.fillWidth: true }
                 Item {
                     Layout.preferredWidth: 20
@@ -63,25 +63,25 @@ Rectangle {
                 color: "transparent"
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing.s3
-                    anchors.rightMargin: Theme.spacing.s3
-                    spacing: Theme.spacing.s2
+                    anchors.leftMargin: Theme.space["2.5"]
+                    anchors.rightMargin: Theme.space["2.5"]
+                    spacing: Theme.space["2"]
                     Label {
                         text: modelData.title
                         color: root.textMain
                         Layout.fillWidth: true
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                     }
-                    Label { text: "›"; color: root.textMuted; font.pixelSize: Theme.typeScale.title }
+                    Label { text: "›"; color: root.textMuted; font.pixelSize: Theme.fontSize.title }
                 }
                 Label {
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: Theme.spacing.s2
+                    anchors.bottomMargin: Theme.space["2"]
                     text: modelData.desc
                     color: root.textMuted
-                    font.pixelSize: Theme.typeScale.caption
+                    font.pixelSize: Theme.fontSize.caption
                 }
                 MouseArea {
                     anchors.fill: parent

@@ -18,7 +18,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "基本用法"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 72; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "// 声明占位\nLoader {\n    id: loader\n    active: false\n    source: 'SomePage.qml'\n}\n\n// 触发加载\nButton { onClicked: loader.active = true }\n\n// 访问加载的内容\nloader.item.someProperty" }
             }
         }

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from threading import Lock
 
+from app.logging import get_logger
 from app.plugins.manifest import PluginManifest
 from app.plugins.plugin_manager import PluginManager
 from app.plugins.runtime import PluginContext
@@ -20,39 +22,55 @@ class BackgroundManager:
         self._plugin_manager = plugin_manager
         self._plugin_context = plugin_context
         self._running_plugin_ids: set[str] = set()
+        self._lock = Lock()
+        self._log = get_logger("app.plugins.background_manager")
 
     def start_all(self) -> None:
         for manifest in self._manifests:
-            try:
-                runtime = self._plugin_manager.ensure_runtime(manifest.id)
-                if runtime is None:
-                    continue
-                start = getattr(runtime, "on_background_start", None)
-                if callable(start):
-                    old_platform = self._plugin_context.platform
-                    old_service_platform = self._plugin_context.services.get("platform")
-                    if old_platform is not None and hasattr(old_platform, "for_plugin"):
-                        scoped_platform = old_platform.for_plugin(manifest.id)
-                        self._plugin_context.platform = scoped_platform
-                        self._plugin_context.services["platform"] = scoped_platform
-                    try:
-                        start(self._plugin_context)
-                    finally:
-                        self._plugin_context.platform = old_platform
-                        if old_service_platform is not None:
-                            self._plugin_context.services["platform"] = old_service_platform
+            self._start_one(manifest, self._plugin_context)
+
+    def _start_one(self, manifest: PluginManifest, context: PluginContext) -> None:
+        with self._lock:
+            if manifest.id in self._running_plugin_ids:
+                return
+        try:
+            runtime = self._plugin_manager.ensure_runtime(manifest.id)
+            if runtime is None:
+                return
+            start = getattr(runtime, "on_background_start", None)
+            if callable(start):
+                old_platform = context.platform
+                old_service_platform = context.services.platform
+                if old_platform is not None and hasattr(old_platform, "for_plugin"):
+                    scoped_platform = old_platform.for_plugin(manifest.id)
+                    context.platform = scoped_platform
+                    context.services.platform = scoped_platform
+                try:
+                    start(context)
+                finally:
+                    context.platform = old_platform
+                    context.services.platform = old_service_platform
+            with self._lock:
                 self._running_plugin_ids.add(manifest.id)
-            except Exception as exc:
-                print(f"[WARN] 后台插件启动失败: {manifest.id} - {exc}")
+            self._log.info("plugin.background.start", "后台插件启动", pluginId=manifest.id)
+        except Exception as exc:
+            self._log.warning("plugin.background.start_failed", "后台插件启动失败", pluginId=manifest.id, error=str(exc))
 
     def stop_all(self) -> None:
-        for plugin_id in list(self._running_plugin_ids):
-            runtime = self._plugin_manager.get_loaded_runtime(plugin_id)
-            if runtime is not None:
-                stop = getattr(runtime, "on_background_stop", None)
-                if callable(stop):
-                    try:
-                        stop()
-                    except Exception as exc:
-                        print(f"[WARN] 后台插件停止失败: {plugin_id} - {exc}")
-            self._running_plugin_ids.discard(plugin_id)
+        with self._lock:
+            plugin_ids = list(self._running_plugin_ids)
+        for plugin_id in plugin_ids:
+            try:
+                runtime = self._plugin_manager.get_loaded_runtime(plugin_id)
+                if runtime is not None:
+                    stop = getattr(runtime, "on_background_stop", None)
+                    if callable(stop):
+                        try:
+                            stop()
+                        except Exception as exc:
+                            self._log.warning("plugin.background.stop_failed", "后台插件停止失败", pluginId=plugin_id, error=str(exc))
+            finally:
+                with self._lock:
+                    self._running_plugin_ids.discard(plugin_id)
+        if plugin_ids:
+            self._log.info("plugin.background.stop_all", "停止后台插件", count=len(plugin_ids))

@@ -25,7 +25,7 @@ Popup {
 
     background: UiPopupSurface {
         dark: root.dark
-        radius: Theme.radius.lg
+        radius: Theme.radii.lg
         fillColor: root.panelBg
     }
 
@@ -42,25 +42,25 @@ Popup {
                 color: index === root.currentEnvIndex
                     ? Theme.token("color-bg-subtle", root.dark)
                     : "transparent"
-                radius: index === root.currentEnvIndex ? Theme.radius.md : 0
+                radius: index === root.currentEnvIndex ? Theme.radii.md : 0
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing.s3
-                    anchors.rightMargin: Theme.spacing.s3
-                    spacing: Theme.spacing.s2
+                    anchors.leftMargin: Theme.space["2.5"]
+                    anchors.rightMargin: Theme.space["2.5"]
+                    spacing: Theme.space["2"]
 
                     Label {
                         text: root.envTagFn ? root.envTagFn(modelData.name) : ""
                         color: root.envTagColorFn ? root.envTagColorFn(modelData.name) : Theme.token("color-text-primary", root.dark)
                         font.bold: false
-                        font.pixelSize: Theme.typeScale.caption
+                        font.pixelSize: Theme.fontSize.caption
                         Layout.preferredWidth: 18
                     }
                     Label {
                         text: modelData.name
                         color: Theme.token("color-text-primary", root.dark)
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                         font.bold: false
                         Layout.fillWidth: true
                     }
@@ -84,13 +84,13 @@ Popup {
             color: "transparent"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.spacing.s3
-                anchors.rightMargin: Theme.spacing.s3
-                spacing: Theme.spacing.s2
+                anchors.leftMargin: Theme.space["2.5"]
+                anchors.rightMargin: Theme.space["2.5"]
+                spacing: Theme.space["2"]
                 Label {
                     text: "管理环境"
                     color: Theme.token("color-primary-active", root.dark)
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                     font.bold: false
                 }
             }

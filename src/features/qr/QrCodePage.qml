@@ -40,13 +40,13 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s2
-        Label { text: "二维码工具"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2"]
+        Label { text: "二维码工具"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         TabBar {
             id: tabs
             Layout.fillWidth: true
-            background: Rectangle { color: panelBg; radius: Theme.radius.md }
+            background: Rectangle { color: panelBg; radius: Theme.radii.md }
             UiTabButton { text: "生成"; dark: dark }
             UiTabButton { text: "扫描"; dark: dark }
             UiTabButton { text: "历史"; dark: dark }
@@ -63,7 +63,7 @@ Item {
                     id: content
                     dark: dark
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Theme.spacing.s4 * 10
+                    Layout.preferredHeight: Theme.space["3"] * 10
                     placeholderText: "输入文本生成二维码..."
                     onTextChanged: qrVm.generateQr(text)
                 }
@@ -71,8 +71,8 @@ Item {
                     Layout.preferredWidth: 220
                     Layout.preferredHeight: 220
                     color: panelBg
-                    radius: Theme.radius.xl
-                    Image { id: qrVmImage; anchors.fill: parent; anchors.margins: Theme.spacing.s2; fillMode: Image.PreserveAspectFit }
+                    radius: Theme.radii.xl
+                    Image { id: qrVmImage; anchors.fill: parent; anchors.margins: Theme.space["2"]; fillMode: Image.PreserveAspectFit }
                 }
             }
 
@@ -118,17 +118,17 @@ Item {
                     model: filteredHistory
                     delegate: Rectangle {
                         width: ListView.view.width
-                        height: Theme.spacing.s4 * 3 + 2
+                        height: Theme.space["3"] * 3 + 2
                         color: index % 2 === 0 ? panelBg : Theme.token("color-bg-subtle-2", dark)
                         border.color: "transparent"
-                        radius: Theme.radius.md
+                        radius: Theme.radii.md
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 8
                             anchors.rightMargin: 8
                             Label { text: modelData.type; Layout.preferredWidth: 45; color: modelData.type === "扫描" ? Theme.token("color-primary-active", dark) : Theme.token("color-success", dark) }
                             Label { text: modelData.content; Layout.fillWidth: true; elide: Text.ElideRight; color: textMain }
-                            Label { text: modelData.createdAt || ""; Layout.preferredWidth: 130; horizontalAlignment: Text.AlignRight; color: textMuted; font.pixelSize: Theme.typeScale.caption }
+                            Label { text: modelData.createdAt || ""; Layout.preferredWidth: 130; horizontalAlignment: Text.AlignRight; color: textMuted; font.pixelSize: Theme.fontSize.caption }
                         }
                     }
                 }

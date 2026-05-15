@@ -938,7 +938,7 @@ def on_background_start(self, ctx: PluginContext) -> None:
 这里把后台服务注册到了：
 
 ```python
-ctx.services["clipboard.background"]
+ctx.services.clipboard
 ```
 
 其他插件也可以通过这个服务读取最新剪切板内容。图片压缩插件就会用它读取剪切板里的图片文件。
@@ -1366,7 +1366,7 @@ Python 适合：
 8. `src/features/image_compress/`：学习插件如何读取输入和剪切板上下文。
 9. `src/features/clipboard/`：学习后台插件、SQLite、剪切板监听。
 10. `src/features/api_test/`：学习复杂窗口插件和更大的业务服务。
-11. `docs/pyqt-remediation-plan.zh-CN.md`：学习后续优化任务的优先级和验收口径。
+11. `docs/project-design.zh-CN.md`：理解当前架构边界、插件生命周期、平台层、存储、日志和并发约定。
 
 每读一个插件，都回答这 6 个问题：
 

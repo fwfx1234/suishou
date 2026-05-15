@@ -6,17 +6,17 @@ ComboBox {
     id: control
 
     property bool dark: false
-    property int cornerRadius: Theme.radius.md
+    property int cornerRadius: Theme.radii.md
     property color fillColor: Theme.token("color-bg-subtle", control.dark)
     property color hoverFillColor: Theme.token("color-bg-subtle-2", control.dark)
     property color textColor: Theme.token("color-text-primary", control.dark)
     property color mutedColor: Theme.token("color-text-regular", control.dark)
     property var itemColorFn: null
 
-    implicitHeight: Theme.spacing.s4 * 3
+    implicitHeight: Theme.space["3"] * 3
     hoverEnabled: true
-    font.family: "IBM Plex Sans"
-    font.pixelSize: Theme.typeScale.body
+    font.family: Theme.fontFamily.ui
+    font.pixelSize: Theme.fontSize.body
 
     palette.buttonText: control.textColor
     palette.text: control.textColor
@@ -27,8 +27,8 @@ ComboBox {
         font: control.font
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignLeft
-        leftPadding: Theme.spacing.s2
-        rightPadding: Theme.spacing.s4
+        leftPadding: Theme.space["2"]
+        rightPadding: Theme.space["3"]
         elide: Text.ElideRight
     }
 
@@ -43,7 +43,7 @@ ComboBox {
 
     indicator: Canvas {
         id: arrowCanvas
-        x: control.width - width - Theme.spacing.s2
+        x: control.width - width - Theme.space["2"]
         y: (control.height - height) / 2
         width: 10
         height: 6
@@ -98,11 +98,11 @@ ComboBox {
             ? (modelData[control.textRole] ?? "")
             : ("" + modelData)
         font: control.font
-        padding: Theme.spacing.s2
+        padding: Theme.space["2"]
         highlighted: control.highlightedIndex === index
 
         background: Rectangle {
-            radius: Theme.radius.sm
+            radius: Theme.radii.sm
             color: optionDelegate.highlighted || optionDelegate.hovered
                 ? Theme.token("color-bg-subtle", control.dark)
                 : "transparent"

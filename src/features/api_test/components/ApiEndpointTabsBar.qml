@@ -56,14 +56,14 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing.s2
-        anchors.rightMargin: Theme.spacing.s2
+        anchors.leftMargin: Theme.space["2"]
+        anchors.rightMargin: Theme.space["2"]
         spacing: 0
 
         Rectangle {
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
-            radius: Theme.radius.xs
+            radius: Theme.radii.xs
             visible: endpointTabsFlick.contentWidth > endpointTabsFlick.width
             opacity: endpointTabsFlick.contentX > 0 ? 1 : 0.4
             color: tabLeftMouse.containsMouse
@@ -120,21 +120,21 @@ Rectangle {
                         }
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.spacing.s3; anchors.rightMargin: Theme.spacing.s1
-                            spacing: Theme.spacing.s2
+                            anchors.leftMargin: Theme.space["2.5"]; anchors.rightMargin: Theme.space["1"]
+                            spacing: Theme.space["2"]
                             Label {
                                 id: tabMethod; text: modelData.method || "GET"
                                 color: root.methodColorFn ? root.methodColorFn(modelData.method || "GET") : root.textMain
                                 font.bold: false; font.italic: true
-                                font.pixelSize: Theme.typeScale.body; font.family: "JetBrains Mono"
+                                font.pixelSize: Theme.fontSize.body; font.family: Theme.fontFamily.mono
                             }
                             Label {
                                 id: tabName; text: modelData.name || modelData.url || "新接口"
-                                color: root.textMain; font.pixelSize: Theme.typeScale.body
+                                color: root.textMain; font.pixelSize: Theme.fontSize.body
                                 Layout.fillWidth: true; elide: Text.ElideRight
                             }
                             Rectangle {
-                                Layout.preferredWidth: 22; Layout.preferredHeight: 22; radius: Theme.radius.xs
+                                Layout.preferredWidth: 22; Layout.preferredHeight: 22; radius: Theme.radii.xs
                                 color: closeMouse.containsMouse
                                     ? Theme.token("color-bg-subtle", root.dark) : "transparent"
                                 UiIcon {
@@ -153,7 +153,7 @@ Rectangle {
         }
 
         Rectangle {
-            Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: Theme.radius.xs
+            Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: Theme.radii.xs
             visible: endpointTabsFlick.contentWidth > endpointTabsFlick.width
             opacity: endpointTabsFlick.contentX < Math.max(0, endpointTabsFlick.contentWidth - endpointTabsFlick.width) ? 1 : 0.4
             color: tabRightMouse.containsMouse
@@ -175,7 +175,7 @@ Rectangle {
 
         Rectangle {
             id: tabMoreButton; Layout.preferredWidth: 36; Layout.preferredHeight: 28
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             color: tabMoreMouse.containsMouse
                 ? Theme.token("color-bg-subtle-2", root.dark) : "transparent"
             UiIcon {
@@ -190,13 +190,13 @@ Rectangle {
 
         Rectangle {
             id: envSelector; Layout.preferredWidth: 180; Layout.preferredHeight: 28
-            radius: Theme.radius.xs
+            radius: Theme.radii.xs
             color: envMouse.containsMouse
                 ? Theme.token("color-bg-subtle", root.dark) : "transparent"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.spacing.s2; anchors.rightMargin: Theme.spacing.s1
-                spacing: Theme.spacing.s1
+                anchors.leftMargin: Theme.space["2"]; anchors.rightMargin: Theme.space["1"]
+                spacing: Theme.space["1"]
                 Rectangle {
                     Layout.preferredWidth: 20; Layout.preferredHeight: 20; radius: 10
                     color: root.envTagColorFn ? root.envTagColorFn(currentEnvName()) : "transparent"
@@ -207,7 +207,7 @@ Rectangle {
                 }
                 Label {
                     Layout.fillWidth: true; text: currentEnvName()
-                    color: root.textMain; font.pixelSize: Theme.typeScale.body; elide: Text.ElideRight
+                    color: root.textMain; font.pixelSize: Theme.fontSize.body; elide: Text.ElideRight
                 }
                 UiIcon {
                     width: 14; height: 14; useQta: true; name: "mdi6.chevron-down"

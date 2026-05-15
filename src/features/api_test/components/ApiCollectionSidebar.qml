@@ -771,20 +771,20 @@ Rectangle {
             color: "transparent"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.spacing.s4
-                anchors.rightMargin: Theme.spacing.s2
+                anchors.leftMargin: Theme.space["3"]
+                anchors.rightMargin: Theme.space["2"]
                 Label {
                     text: "接口管理"
                     Layout.fillWidth: true
                     color: root.textMain
                     font.bold: false
-                    font.pixelSize: Theme.typeScale.heading
+                    font.pixelSize: Theme.fontSize.heading
                 }
 
                 Rectangle {
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
-                    radius: Theme.radius.xs
+                    radius: Theme.radii.xs
                     color: expandAllMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
                     Image {
                         anchors.centerIn: parent
@@ -807,7 +807,7 @@ Rectangle {
                 Rectangle {
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
-                    radius: Theme.radius.xs
+                    radius: Theme.radii.xs
                     color: collapseAllMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
                     Image {
                         anchors.centerIn: parent
@@ -831,8 +831,8 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: Theme.spacing.s3
-            Layout.rightMargin: Theme.spacing.s3
+            Layout.leftMargin: Theme.space["2.5"]
+            Layout.rightMargin: Theme.space["2.5"]
             Layout.bottomMargin: 4
             UiTextField {
                 id: searchInput
@@ -844,7 +844,7 @@ Rectangle {
                 id: filterButton
                 Layout.preferredWidth: 28
                 Layout.preferredHeight: 28
-                radius: Theme.radius.xs
+                radius: Theme.radii.xs
                 color: "transparent"
                 border.color: root.panelBorder
                 Image {
@@ -961,8 +961,8 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing.s3 + nodeRoot.depth * 14
-                    anchors.rightMargin: Theme.spacing.s2
+                    anchors.leftMargin: Theme.space["2.5"] + nodeRoot.depth * 14
+                    anchors.rightMargin: Theme.space["2"]
                     spacing: 6
                     property bool isCase: !!root.isCaseNode(nodeRoot.node)
 
@@ -1000,7 +1000,7 @@ Rectangle {
                         text: (nodeRoot.node && nodeRoot.node.method) ? nodeRoot.node.method : ""
                         color: root.methodColorFn ? root.methodColorFn(nodeRoot.node ? nodeRoot.node.method : "") : root.textMuted
                         font.bold: false
-                        font.family: "JetBrains Mono"
+                        font.family: Theme.fontFamily.mono
                         font.pixelSize: 10
                         Layout.preferredWidth: 32
                     }
@@ -1019,7 +1019,7 @@ Rectangle {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                         color: root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                         font.bold: false
                     }
 
@@ -1038,7 +1038,7 @@ Rectangle {
                     visible: root.editingNodeId === nodeRoot.nodeId
                     z: 4
                     x: {
-                        var base = Theme.spacing.s3 + nodeRoot.depth * 14 + 10 + 6
+                        var base = Theme.space["2.5"] + nodeRoot.depth * 14 + 10 + 6
                         if (root.isEndpointNode(nodeRoot.node) && nodeRoot.node.method !== undefined)
                             base += 32 + 6
                         if (root.isCaseNode(nodeRoot.node))
@@ -1046,7 +1046,7 @@ Rectangle {
                         return base
                     }
                     y: 3
-                    width: Math.max(80, nodeRow.width - x - Theme.spacing.s2)
+                    width: Math.max(80, nodeRow.width - x - Theme.space["2"])
                     height: 24
                     text: nodeRoot.node ? (nodeRoot.node.name || "") : ""
                     selectByMouse: true
@@ -1091,7 +1091,7 @@ Rectangle {
                             root.openContextMenuAtPath(nodeRoot.node, nodeRoot.nodeId, nodeRoot.nodePath, p.x, p.y)
                             return
                         }
-                        var toggleLeft = Theme.spacing.s3 + nodeRoot.depth * 14
+                        var toggleLeft = Theme.space["2.5"] + nodeRoot.depth * 14
                         var toggleRight = toggleLeft + 16
                         if (root.canHaveChildrenNode(nodeRoot.node) && root.hasChildNodes(nodeRoot.node)
                                 && mouse.x >= toggleLeft && mouse.x <= toggleRight) {
@@ -1125,7 +1125,7 @@ Rectangle {
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: UiPopupSurface {
             dark: root.dark
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             fillColor: Theme.token("color-bg-surface", root.dark)
         }
         contentItem: Column {
@@ -1137,10 +1137,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建接口"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: addEndpointMouse
@@ -1160,10 +1160,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建分组"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: addFolderMouse
@@ -1183,10 +1183,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "导入 OpenAPI"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: importMouse
@@ -1215,7 +1215,7 @@ Rectangle {
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: UiPopupSurface {
             dark: root.dark
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             fillColor: Theme.token("color-bg-surface", root.dark)
         }
         contentItem: Column {
@@ -1230,10 +1230,10 @@ Rectangle {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacing.s3
+                        anchors.leftMargin: Theme.space["2.5"]
                         text: modelData === "ALL" ? "全部方法" : modelData
                         color: root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                     }
                     MouseArea {
                         id: filterMouse
@@ -1288,7 +1288,7 @@ Rectangle {
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: UiPopupSurface {
             dark: root.dark
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             fillColor: Theme.token("color-bg-surface", root.dark)
         }
         contentItem: Column {
@@ -1303,10 +1303,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建接口"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRootEndpointMouse
@@ -1328,10 +1328,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建分组"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRootFolderMouse
@@ -1353,10 +1353,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "导入 OpenAPI"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRootImportMouse
@@ -1378,10 +1378,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "全部展开"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRootExpandMouse
@@ -1403,10 +1403,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "全部收起"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRootCollapseMouse
@@ -1428,10 +1428,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建场景"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewCaseMouse
@@ -1453,10 +1453,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建同级场景"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewSiblingCaseMouse
@@ -1478,10 +1478,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建子接口"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewEndpointMouse
@@ -1503,10 +1503,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建同级接口"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewSiblingEndpointMouse
@@ -1528,10 +1528,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建子分组"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewChildFolderMouse
@@ -1553,10 +1553,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "新建同级分组"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxNewFolderMouse
@@ -1585,10 +1585,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: root.contextNode && root.contextNode.expanded ? "收起" : "展开"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxExpandNodeMouse
@@ -1610,10 +1610,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "移动到分组"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxMoveMouse
@@ -1645,10 +1645,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "上移"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxUpMouse
@@ -1672,10 +1672,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "下移"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxDownMouse
@@ -1698,10 +1698,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "复制"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxDuplicateMouse
@@ -1730,10 +1730,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "重命名"
                     color: root.textMain
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxRenameMouse
@@ -1754,10 +1754,10 @@ Rectangle {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacing.s3
+                    anchors.leftMargin: Theme.space["2.5"]
                     text: "删除"
                     color: Theme.token("color-danger", root.dark)
-                    font.pixelSize: Theme.typeScale.body
+                    font.pixelSize: Theme.fontSize.body
                 }
                 MouseArea {
                     id: ctxDeleteMouse
@@ -1786,7 +1786,7 @@ Rectangle {
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: UiPopupSurface {
             dark: root.dark
-            radius: Theme.radius.md
+            radius: Theme.radii.md
             fillColor: Theme.token("color-bg-surface", root.dark)
         }
         contentItem: Column {
@@ -1801,10 +1801,10 @@ Rectangle {
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacing.s3
+                        anchors.leftMargin: Theme.space["2.5"]
                         text: modelData.name || "未命名分组"
                         color: root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                     }
                     MouseArea {
                         id: moveTargetMouse

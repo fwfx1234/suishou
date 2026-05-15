@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 from uuid import uuid4
 
-from app.storage import SQLiteDatabase, sqlite_database
+from app.storage import SQLiteDatabase
 
 
 class EnvironmentRepository:
-    def __init__(self, database: SQLiteDatabase | str | Path) -> None:
-        self._database = database if isinstance(database, SQLiteDatabase) else sqlite_database(database)
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
         self._db_path = self._database.path
 
     def list_environments(self) -> list[dict]:
@@ -127,8 +126,8 @@ def _normalize_environments(environments: list[dict]) -> list[dict]:
     for index, env in enumerate(environments or []):
         if not isinstance(env, dict):
             continue
-        variables = _normalize_rows(env.get("variables") or [], key_alias="name")
-        headers = _normalize_rows(env.get("headers") or [], key_alias="name")
+        variables = _normalize_rows(env.get("variables") or [])
+        headers = _normalize_rows(env.get("headers") or [])
         normalized.append(
             {
                 "id": str(env.get("id") or uuid4()),
@@ -141,13 +140,13 @@ def _normalize_environments(environments: list[dict]) -> list[dict]:
     return normalized or [_default_environment()]
 
 
-def _normalize_rows(rows: list[dict], *, key_alias: str) -> list[dict]:
+def _normalize_rows(rows: list[dict]) -> list[dict]:
     normalized: list[dict] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        key = str(row.get("key") or row.get(key_alias) or "").strip()
-        value = str(row.get("value") or row.get("localValue") or "")
+        key = str(row.get("key") or "").strip()
+        value = str(row.get("value") or "")
         if not key and not value:
             continue
         normalized.append(

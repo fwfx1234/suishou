@@ -81,4 +81,9 @@ Window {
         sequence: "Ctrl+W"
         onActivated: pluginWin.close()
     }
+
+    Shortcut {
+        sequence: "Esc"
+        onActivated: pluginWin.close()
+    }
 }

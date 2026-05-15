@@ -423,7 +423,3 @@ src/app/ui/                    // 跨插件通用组件
 2. 检查新组件：是否有硬编码的 `root.xxx` 引用？如果有，改成 property 传递
 3. 验证 QML 能独立加载：`QQmlComponent(engine, QUrl.fromLocalFile("yourComponent.qml"))`
 4. 看看 `EnvManagerDialog.qml`，思考为什么它在 `api_test/` 而不在 `components/`？
-
----
-
-[上一章：主题系统](14-theme-system.zh-CN.md) | [下一章：全局热键](16-hotkeys.zh-CN.md)

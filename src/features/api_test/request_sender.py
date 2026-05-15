@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from threading import Lock
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from app.qt.task_runner import TaskRunner
+from app.concurrency import PythonTaskRunner
+from app.logging import get_logger
 
 from .service import ApiTestService
 
@@ -25,7 +27,7 @@ class RequestSenderCoordinator:
         on_sending: SendingCallback,
         on_ws_timeline: WsTimelineCallback | None = None,
         on_ws_status: WsStatusCallback | None = None,
-        task_runner: TaskRunner | None = None,
+        task_runner: PythonTaskRunner | None = None,
     ) -> None:
         self._service = service
         self._on_response = on_response
@@ -33,10 +35,12 @@ class RequestSenderCoordinator:
         self._on_sending = on_sending
         self._on_ws_timeline = on_ws_timeline
         self._on_ws_status = on_ws_status
-        self._runner = task_runner or TaskRunner()
+        self._runner = task_runner or PythonTaskRunner(thread_name_prefix="api-test")
         self._sending = False
         self._active_request_id = ""
         self._disposed = False
+        self._lock = Lock()
+        self._log = get_logger("features.api_test.request_sender", plugin_id="api-test")
 
     def send_request(self, data: dict) -> None:
         method = str(data.get("method") or "GET")
@@ -129,6 +133,14 @@ class RequestSenderCoordinator:
         request_id = self._begin_request()
         if not request_id:
             return
+        self._log.info(
+            "api.request.start",
+            "开始发送文件请求",
+            requestId=request_id,
+            method=str(method),
+            urlLength=len(str(url or "")),
+            tabId=str(tab_id or ""),
+        )
 
         def run_request() -> tuple[str, str, dict]:
             return self._service.send_api_file(
@@ -174,6 +186,16 @@ class RequestSenderCoordinator:
         request_id = self._begin_request()
         if not request_id:
             return
+        self._log.info(
+            "api.request.start",
+            "开始发送请求",
+            requestId=request_id,
+            method=str(method),
+            mode=str(request_mode),
+            urlLength=len(str(url or "")),
+            bodyLength=len(str(body_text or "")),
+            tabId=str(tab_id or ""),
+        )
 
         def run_request() -> tuple[str, str, dict]:
             return self._service.send_api(
@@ -220,39 +242,57 @@ class RequestSenderCoordinator:
         self.send_ws(tab_id, content, encoding)
 
     def dispose(self) -> None:
-        self._disposed = True
-        self._active_request_id = ""
-        self._sending = False
-        self._runner.cancel_all()
+        with self._lock:
+            self._disposed = True
+            self._active_request_id = ""
+            self._sending = False
+        self._runner.shutdown(wait=False)
 
     def _begin_request(self) -> str:
-        if self._disposed:
-            return ""
-        if self._sending:
+        busy = False
+        request_id = ""
+        with self._lock:
+            if self._disposed:
+                return ""
+            if self._sending:
+                busy = True
+            else:
+                self._sending = True
+                self._active_request_id = uuid4().hex
+                request_id = self._active_request_id
+        if busy:
             self._on_response("状态: BUSY", "已有请求正在发送中，请稍后再试。", {})
             return ""
-        self._sending = True
-        self._active_request_id = uuid4().hex
-        request_id = self._active_request_id
         self._on_sending(True)
         return request_id
 
     def _request_is_current(self, request_id: str) -> bool:
-        return not self._disposed and self._active_request_id == request_id
+        with self._lock:
+            return not self._disposed and self._active_request_id == request_id
 
     def _finish_request(self, request_id: str) -> None:
-        if self._active_request_id == request_id:
+        should_emit = False
+        with self._lock:
+            if self._active_request_id != request_id:
+                return
             self._sending = False
             self._active_request_id = ""
             if self._disposed:
                 return
+            should_emit = True
+        if should_emit:
             self._on_sending(False)
 
     def _handle_request_success(self, request_id: str, result: object) -> None:
         title, body, details = result if isinstance(result, tuple) and len(result) == 3 else ("状态: ERR", "请求结果格式异常。", {})
+        status_code = ""
+        if isinstance(details, dict):
+            status_code = str(details.get("statusCode") or "")
+        self._log.info("api.request.complete", "请求完成", requestId=request_id, statusCode=status_code)
         self._emit_response_if_current(request_id, str(title), str(body), dict(details or {}))
 
     def _handle_request_error(self, request_id: str, exc: BaseException) -> None:
+        self._log.warning("api.request.failed", "请求失败", requestId=request_id, error=str(exc))
         self._emit_response_if_current(request_id, "状态: ERR", str(exc), {})
 
     def _emit_response_if_current(self, request_id: str, title: str, body: str, details: dict) -> None:
@@ -264,11 +304,11 @@ class RequestSenderCoordinator:
         self._on_history(self._service.list_history())
 
     def _run_ws_task(self, tab_id: str, fn: Callable[[], tuple[str, str]]) -> None:
-        if self._disposed:
+        if self._is_disposed():
             return
 
         def on_success(result: object) -> None:
-            if self._disposed:
+            if self._is_disposed():
                 return
             title, body = result if isinstance(result, tuple) and len(result) == 2 else ("状态: WS_ERR", "WebSocket 返回结果格式异常。")
             self._on_response(str(title), str(body), {})
@@ -277,12 +317,17 @@ class RequestSenderCoordinator:
                 self._on_ws_timeline(tab_id)
 
         def on_error(exc: BaseException) -> None:
-            if self._disposed:
+            if self._is_disposed():
                 return
+            self._log.warning("api.websocket.failed", "WebSocket 操作失败", tabId=tab_id, error=str(exc))
             self._on_response("状态: WS_ERR", str(exc), {})
             self._emit_ws_status(tab_id, "error", str(exc))
 
         self._runner.start(fn, on_success=on_success, on_error=on_error)
+
+    def _is_disposed(self) -> bool:
+        with self._lock:
+            return self._disposed
 
     def _emit_ws_status(self, tab_id: str, status: str, message: str) -> None:
         if self._on_ws_status:

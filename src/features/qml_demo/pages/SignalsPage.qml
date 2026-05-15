@@ -5,6 +5,7 @@ import "../../../app/ui"
 import "../../../app/theme"
 
 Flickable {
+    id: root
     anchors.fill: parent; clip: true; contentHeight: col.implicitHeight + 32
     property bool dark: false; property color primary: "#8B5CF6"
     property var logItems: []
@@ -26,7 +27,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Python Signal → QML Connections"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "// Python\ndataReady = Signal(str)\nself.dataReady.emit('hello')\n\n// QML\nConnections {\n    target: vm\n    function onDataReady(msg) { ... }\n}" }
             }
             RowLayout {
@@ -39,7 +40,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "QML 调用 Python @Slot"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "// Python: @Slot(result=str)       // QML: var msg = vm.getGreeting()" }
             }
             UiButton { text: "调用 getGreeting()"; dark: dark; variant: "primary"; onClicked: root.addLog(qmlDemoVm.getGreeting()) }
@@ -51,7 +52,7 @@ Flickable {
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 150; radius: 8; color: Theme.token("color-bg-subtle", dark); clip: true
                 ListView { anchors.fill: parent; anchors.margins: 4; spacing: 2
                     model: root.logItems
-                    delegate: Label { width: ListView.view.width; text: modelData.text; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-regular", dark) } }
+                    delegate: Label { width: ListView.view.width; text: modelData.text; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-regular", dark) } }
             }
         }
 

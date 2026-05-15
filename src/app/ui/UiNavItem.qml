@@ -15,21 +15,21 @@ Rectangle {
     signal activated()
 
     // 展开 / 收起同一行高，仅通过隐藏文字区分
-    implicitHeight: Theme.spacing.s4 * 3
-    radius: root.collapsed ? Theme.radius.xs : Theme.radius.sm
+    implicitHeight: Theme.space["3"] * 3
+    radius: root.collapsed ? Theme.radii.xs : Theme.radii.sm
     color: "transparent"
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing.s2
-        anchors.rightMargin: Theme.spacing.s2
-        spacing: Theme.spacing.s2
+        anchors.leftMargin: Theme.space["2"]
+        anchors.rightMargin: Theme.space["2"]
+        spacing: Theme.space["2"]
 
         Rectangle {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 30
             Layout.alignment: Qt.AlignVCenter
-            radius: Theme.radius.xs
+            radius: Theme.radii.xs
             color: "transparent"
 
             UiNavIcon {
@@ -50,8 +50,8 @@ Rectangle {
             color: root.active
                 ? root.highlightColor
                 : Theme.token("color-nav-idle", root.dark)
-            font.pixelSize: Theme.typeScale.nav
-            font.family: "IBM Plex Sans"
+            font.pixelSize: Theme.fontSize.nav
+            font.family: Theme.fontFamily.ui
             elide: Text.ElideRight
         }
     }

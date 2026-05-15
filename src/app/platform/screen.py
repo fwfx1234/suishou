@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtGui import QCursor, QGuiApplication, QScreen
 
-from .models import CursorPosition, DisplayInfo
+from app.platform.models import CursorPosition, DisplayInfo
 
 
 class QtScreenApi:

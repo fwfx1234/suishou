@@ -5,6 +5,7 @@ import "../../../app/ui"
 import "../../../app/theme"
 
 Flickable {
+    id: root
     anchors.fill: parent; clip: true; contentHeight: col.implicitHeight + 32
     property bool dark: false; property color primary: "#8B5CF6"
     property int elapsed: 0
@@ -19,7 +20,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "Timer 定时器"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: "Timer {  interval: 1000;  running: true;  repeat: true;  onTriggered: { }  }" }
             }
             RowLayout { spacing: 12
@@ -35,7 +36,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "states 状态机"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 11; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'states: [\n    State { name: "normal"; PropertyChanges { target: box; color: "#10B981" } },\n    State { name: "warning"; PropertyChanges { target: box; color: "#F59E0B" } },\n    State { name: "error"; PropertyChanges { target: box; color: "#EF4444" } }\n]\n// 切换: root.state = "error"' }
             }
             RowLayout { spacing: 8

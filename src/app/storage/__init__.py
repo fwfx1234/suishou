@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from .dict_store import JsonDictStore
+from .dict_store import DatabaseDictStore
 from .manager import StorageManager, dict_store, sqlite_database, storage_manager
 from .sqlite import SQLiteConnection, SQLiteDatabase, SQLiteRow
 
 __all__ = [
-    "JsonDictStore",
+    "DatabaseDictStore",
     "SQLiteConnection",
     "SQLiteDatabase",
     "SQLiteRow",

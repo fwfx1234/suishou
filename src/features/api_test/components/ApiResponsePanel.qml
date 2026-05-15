@@ -55,22 +55,22 @@ ColumnLayout {
         color: root.panelBg
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Theme.spacing.s4
-            anchors.rightMargin: Theme.spacing.s3
+            anchors.leftMargin: Theme.space["3"]
+            anchors.rightMargin: Theme.space["2.5"]
             Label {
                 text: root.titleText
                 color: root.textMain
                 font.bold: false
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
                 Layout.fillWidth: true
             }
-            Label { text: "Mock"; color: root.textMuted; font.pixelSize: Theme.typeScale.caption }
+            Label { text: "Mock"; color: root.textMuted; font.pixelSize: Theme.fontSize.caption }
             UiSwitch {
                 dark: root.dark
                 checked: root.mockMode
                 onToggled: root.mockModeToggled(checked)
             }
-            Label { text: "校验响应"; color: root.textMuted; font.pixelSize: Theme.typeScale.caption }
+            Label { text: "校验响应"; color: root.textMuted; font.pixelSize: Theme.fontSize.caption }
             UiSwitch {
                 dark: root.dark
                 checked: root.assertionsEnabled
@@ -83,7 +83,7 @@ ColumnLayout {
                     ? Theme.token("color-danger", root.dark)
                     : Theme.token("color-success", root.dark)
                 font.bold: false
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
             }
         }
     }
@@ -98,9 +98,9 @@ ColumnLayout {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Theme.spacing.s3
-            anchors.rightMargin: Theme.spacing.s3
-            spacing: Theme.spacing.s2
+            anchors.leftMargin: Theme.space["2.5"]
+            anchors.rightMargin: Theme.space["2.5"]
+            spacing: Theme.space["2"]
 
             Repeater {
                 model: root.detailTabs
@@ -109,9 +109,9 @@ ColumnLayout {
                     required property int index
                     required property string modelData
                     property bool active: index === root.detailTab
-                    Layout.preferredWidth: Math.max(74, responseTabLabel.implicitWidth + Theme.spacing.s5)
+                    Layout.preferredWidth: Math.max(74, responseTabLabel.implicitWidth + Theme.space["4"])
                     Layout.preferredHeight: 28
-                    radius: Theme.radius.xs
+                    radius: Theme.radii.xs
                     color: active
                         ? Theme.token("color-primary-bg", root.dark)
                         : (responseTabMouse.containsMouse ? Theme.token("color-bg-subtle-2", root.dark) : "transparent")
@@ -124,7 +124,7 @@ ColumnLayout {
                         color: responseTabItem.active
                             ? Theme.token("color-primary-active", root.dark)
                             : root.textMain
-                        font.pixelSize: Theme.typeScale.body
+                        font.pixelSize: Theme.fontSize.body
                         font.bold: responseTabItem.active
                     }
                     MouseArea {
@@ -142,7 +142,7 @@ ColumnLayout {
                 visible: root.logEntries.length > 0
                 text: "日志 " + root.logEntries.length
                 color: root.textSubtle
-                font.pixelSize: Theme.typeScale.caption
+                font.pixelSize: Theme.fontSize.caption
             }
         }
     }
@@ -156,7 +156,7 @@ ColumnLayout {
 
         ColumnLayout {
             anchors.centerIn: parent
-            spacing: Theme.spacing.s2
+            spacing: Theme.space["2"]
             visible: !root.responseHasContent()
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
@@ -173,14 +173,14 @@ ColumnLayout {
                 Layout.alignment: Qt.AlignHCenter
                 text: '点击 "发送" 按钮获取返回结果'
                 color: root.textSubtle
-                font.pixelSize: Theme.typeScale.body
+                font.pixelSize: Theme.fontSize.body
             }
         }
 
         Rectangle {
             anchors.fill: parent
-            anchors.margins: Theme.spacing.s3
-            radius: Theme.radius.md
+            anchors.margins: Theme.space["2.5"]
+            radius: Theme.radii.md
             color: Theme.token("color-bg-subtle-2", root.dark)
             border.width: 1
             border.color: root.softBorder
@@ -199,7 +199,7 @@ ColumnLayout {
 
             Flickable {
                 anchors.fill: parent
-                anchors.margins: Theme.spacing.s2
+                anchors.margins: Theme.space["2"]
                 clip: true
                 visible: root.detailTab === 4
                 contentWidth: width
@@ -208,15 +208,15 @@ ColumnLayout {
                 ColumnLayout {
                     id: responseLogColumn
                     width: parent.width
-                    spacing: Theme.spacing.s2
+                    spacing: Theme.space["2"]
 
                     Repeater {
                         model: root.logEntries
                         delegate: Rectangle {
                             required property var modelData
                             Layout.fillWidth: true
-                            Layout.preferredHeight: logBlock.implicitHeight + Theme.spacing.s4
-                            radius: Theme.radius.sm
+                            Layout.preferredHeight: logBlock.implicitHeight + Theme.space["3"]
+                            radius: Theme.radii.sm
                             color: Theme.token("color-bg-surface", root.dark)
                             border.width: 1
                             border.color: root.softBorder
@@ -224,14 +224,14 @@ ColumnLayout {
                             ColumnLayout {
                                 id: logBlock
                                 anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-                                anchors.margins: Theme.spacing.s2
-                                spacing: Theme.spacing.s1
+                                anchors.margins: Theme.space["2"]
+                                spacing: Theme.space["1"]
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Label {
                                         text: modelData.title || "请求日志"
                                         color: root.textMain
-                                        font.pixelSize: Theme.typeScale.body
+                                        font.pixelSize: Theme.fontSize.body
                                         font.bold: true
                                         Layout.fillWidth: true
                                         elide: Text.ElideRight
@@ -239,22 +239,22 @@ ColumnLayout {
                                     Label {
                                         text: modelData.time || ""
                                         color: root.textSubtle
-                                        font.pixelSize: Theme.typeScale.caption
+                                        font.pixelSize: Theme.fontSize.caption
                                     }
                                 }
                                 TextArea {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: Math.max(96, implicitHeight + Theme.spacing.s2)
+                                    Layout.preferredHeight: Math.max(96, implicitHeight + Theme.space["2"])
                                     text: modelData.text || ""
                                     readOnly: true
                                     wrapMode: TextEdit.NoWrap
                                     selectByMouse: true
                                     color: root.textMain
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: Theme.typeScale.mono
-                                    padding: Theme.spacing.s2
+                                    font.family: Theme.fontFamily.mono
+                                    font.pixelSize: Theme.fontSize.mono
+                                    padding: Theme.space["2"]
                                     background: Rectangle {
-                                        radius: Theme.radius.xs
+                                        radius: Theme.radii.xs
                                         color: Theme.token("color-bg-subtle", root.dark)
                                     }
                                 }

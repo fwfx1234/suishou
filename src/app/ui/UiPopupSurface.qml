@@ -1,23 +1,21 @@
 import QtQuick
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 import "../theme"
 
 Item {
     id: root
 
     property bool dark: false
-    property int radius: Theme.radius.lg
+    property int radius: Theme.radii.lg
     property color fillColor: Theme.token("color-bg-surface", dark)
-    DropShadow {
+    MultiEffect {
         anchors.fill: surface
         source: surface
-        horizontalOffset: 0
-        verticalOffset: 2
-        radius: 16
-        samples: 33
-        color: "#4D000000"
-        transparentBorder: true
-        cached: false
+        shadowEnabled: true
+        shadowBlur: 0.7
+        shadowOpacity: 0.3
+        shadowHorizontalOffset: 0
+        shadowVerticalOffset: 2
     }
 
     Rectangle {

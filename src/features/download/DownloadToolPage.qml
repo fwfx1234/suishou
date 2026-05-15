@@ -32,9 +32,9 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.spacing.s4
-        spacing: Theme.spacing.s2
-        Label { text: "下载工具"; font.bold: true; font.pixelSize: Theme.typeScale.title; color: textMain; font.family: "IBM Plex Sans" }
+        anchors.margins: Theme.space["3"]
+        spacing: Theme.space["2"]
+        Label { text: "下载工具"; font.bold: true; font.pixelSize: Theme.fontSize.title; color: textMain; font.family: Theme.fontFamily.ui }
         RowLayout {
             UiTextField { id: url; dark: dark; Layout.fillWidth: true; placeholderText: "输入下载链接..." }
             UiButton {
@@ -64,16 +64,16 @@ Item {
             model: tasks
             delegate: Rectangle {
                 width: ListView.view.width
-                height: Theme.spacing.s4 * 4 + Theme.spacing.s1
-                radius: Theme.radius.md
+                height: Theme.space["3"] * 4 + Theme.space["1"]
+                radius: Theme.radii.md
                 color: index % 2 === 0 ? panelBg : Theme.token("color-bg-subtle-2", dark)
                 border.color: "transparent"
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.spacing.s3
-                    anchors.rightMargin: Theme.spacing.s3
-                    anchors.topMargin: Theme.spacing.s2 - 2
-                    anchors.bottomMargin: Theme.spacing.s2 - 2
+                    anchors.leftMargin: Theme.space["2.5"]
+                    anchors.rightMargin: Theme.space["2.5"]
+                    anchors.topMargin: Theme.space["2"] - 2
+                    anchors.bottomMargin: Theme.space["2"] - 2
                     spacing: 3
                     RowLayout {
                         Layout.fillWidth: true

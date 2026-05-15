@@ -7,11 +7,11 @@ TabButton {
 
     property bool dark: false
 
-    implicitHeight: Theme.spacing.s4 * 3 - 2
+    implicitHeight: Theme.space["3"] * 3 - 2
     hoverEnabled: true
 
     background: Rectangle {
-        radius: Theme.radius.sm
+        radius: Theme.radii.sm
         color: control.checked
             ? Theme.token("color-nav-active-bg", control.dark)
             : (control.hovered ? (control.dark ? Theme.token("color-nav-icon-idle-bg", true) : Theme.token("color-bg-subtle-2", false)) : "transparent")
@@ -22,10 +22,10 @@ TabButton {
     contentItem: Text {
         text: control.text
         color: control.checked ? (control.dark ? Theme.token("color-nav-active-text", true) : Theme.token("color-primary-active", false)) : Theme.token("color-text-regular", control.dark)
-        font.pixelSize: Theme.typeScale.mono
+        font.pixelSize: Theme.fontSize.mono
         font.bold: false
         font.weight: Font.Normal
-        font.family: "IBM Plex Sans"
+        font.family: Theme.fontFamily.ui
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }

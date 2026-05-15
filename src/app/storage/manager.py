@@ -5,7 +5,7 @@ import re
 
 from app.paths import data_dir
 
-from .dict_store import JsonDictStore
+from .dict_store import DatabaseDictStore
 from .sqlite import SQLiteDatabase
 
 
@@ -37,8 +37,12 @@ class StorageManager:
         self,
         namespace: str | Path,
         defaults: dict | None = None,
-    ) -> JsonDictStore:
-        return JsonDictStore(self._dict_path(namespace), defaults=defaults)
+    ) -> DatabaseDictStore:
+        return DatabaseDictStore(
+            self.database("dict_store.db"),
+            self._dict_namespace(namespace),
+            defaults=defaults,
+        )
 
     def path(self, name: str | Path) -> Path:
         path = Path(name)
@@ -46,14 +50,14 @@ class StorageManager:
             return path
         return self.root / path
 
-    def _dict_path(self, namespace: str | Path) -> Path:
+    def _dict_namespace(self, namespace: str | Path) -> str:
         path = Path(namespace)
-        if path.is_absolute():
-            return path
         parts = [_safe_part(part) for part in path.parts if part not in {"", "."}]
         if not parts:
             parts = ["default"]
-        return self.root / "stores" / Path(*parts).with_suffix(".json")
+        if parts[-1].endswith(".json"):
+            parts[-1] = _safe_part(parts[-1][:-5])
+        return "/".join(parts)
 
 
 def storage_manager(root: Path | None = None) -> StorageManager:
@@ -69,7 +73,7 @@ def dict_store(
     defaults: dict | None = None,
     *,
     root: Path | None = None,
-) -> JsonDictStore:
+) -> DatabaseDictStore:
     return storage_manager(root).dict_store(namespace, defaults=defaults)
 
 

@@ -17,7 +17,7 @@ Flickable {
         ColumnLayout { spacing: 8
             Label { text: "语义色板（所有颜色来源）"; font.pixelSize: 15; font.bold: true; color: Theme.token("color-text-primary", dark) }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 48; radius: 8; color: Theme.token("color-bg-subtle", dark)
-                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark)
+                Label { anchors.verticalCenter: parent.verticalCenter; x: 14; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark)
                     text: 'color: Theme.token("color-text-primary", dark)  // ✓  正确\ncolor: "#333333"  // ✗  硬编码，深色模式下不可见' }
             }
             Repeater {
@@ -28,7 +28,7 @@ Flickable {
                 ]
                 delegate: RowLayout { spacing: 8
                     Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 22; radius: 4; color: Theme.token(modelData, dark); border.width: 1; border.color: Theme.token("color-border-default", dark) }
-                    Label { text: modelData; font.pixelSize: 12; font.family: "JetBrains Mono"; color: Theme.token("color-text-primary", dark) }
+                    Label { text: modelData; font.pixelSize: 12; font.family: Theme.fontFamily.mono; color: Theme.token("color-text-primary", dark) }
                 }
             }
         }

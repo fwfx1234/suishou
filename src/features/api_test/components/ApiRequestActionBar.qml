@@ -41,9 +41,9 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Theme.spacing.s3
-        anchors.rightMargin: Theme.spacing.s3
-        spacing: Theme.spacing.s2
+        anchors.leftMargin: Theme.space["2.5"]
+        anchors.rightMargin: Theme.space["2.5"]
+        spacing: Theme.space["2"]
 
         UiComboBox {
             id: methodCombo
@@ -51,10 +51,10 @@ Rectangle {
             model: root.methodModel
             Layout.preferredWidth: 66
             Layout.preferredHeight: 28
-            cornerRadius: Theme.radius.xs
+            cornerRadius: Theme.radii.xs
             fillColor: root.panelBg
-            font.pixelSize: Theme.typeScale.caption
-            font.family: "JetBrains Mono"
+            font.pixelSize: Theme.fontSize.caption
+            font.family: Theme.fontFamily.mono
             font.bold: false
             itemColorFn: function(index, modelData) {
                 return root.methodColorFn ? root.methodColorFn(modelData) : undefined
@@ -119,8 +119,8 @@ Rectangle {
                     text: root.sending ? "发送中" : "发送"
                     anchors.verticalCenter: parent.verticalCenter
                     color: Theme.token("color-bg-surface", false)
-                    font.pixelSize: Theme.typeScale.body
-                    font.family: "IBM Plex Sans"
+                    font.pixelSize: Theme.fontSize.body
+                    font.family: Theme.fontFamily.ui
                 }
             }
         }
