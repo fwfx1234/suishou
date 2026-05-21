@@ -65,7 +65,6 @@ HIDDEN_IMPORTS = [
 if sys.platform == "darwin":
     HIDDEN_IMPORTS += [
         "pynput",
-        "pyobjc_framework_cocoa",
     ]
 elif sys.platform == "win32":
     HIDDEN_IMPORTS += [
