@@ -69,7 +69,7 @@ Rectangle {
         UiComboBox {
             id: methodCombo
             dark: root.dark
-            flat: true
+            flatStyle: true
             model: root.methodModel
             Layout.preferredWidth: 82
             Layout.preferredHeight: 30
@@ -118,8 +118,9 @@ Rectangle {
                     opacity: 0.65
                 }
 
-                TextField {
+                UiTextField {
                     id: pathField
+                    dark: root.dark
                     Layout.fillWidth: true
                     Layout.preferredHeight: 30
                     color: Theme.token("color-text-primary", root.dark)

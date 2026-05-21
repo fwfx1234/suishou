@@ -7,14 +7,19 @@ from .models import PlatformInfo
 from .protocols import (
     AppIndexerProtocol,
     ClipboardApiProtocol,
+    ClipboardSubscriberProtocol,
     DialogApiProtocol,
     DynamicCommandApiFactoryProtocol,
     ExternalLauncherProtocol,
     HotkeyFactoryProtocol,
+    NotificationApiProtocol,
+    PathsApiProtocol,
     PermissionApiProtocol,
     ScreenApiProtocol,
     StorageFactoryProtocol,
     SystemCommandProviderProtocol,
+    TrayAppearanceProtocol,
+    WindowingApiProtocol,
 )
 
 
@@ -23,7 +28,7 @@ class PlatformServices:
     info: PlatformInfo
     default_launcher_hotkey: str
     default_clipboard_hotkey: str
-    paths: object
+    paths: PathsApiProtocol
     hotkey_factory: HotkeyFactoryProtocol
     app_indexer: AppIndexerProtocol
     external_launcher: ExternalLauncherProtocol
@@ -34,6 +39,10 @@ class PlatformServices:
     storage_factory: StorageFactoryProtocol
     dynamic_command_api_factory: DynamicCommandApiFactoryProtocol
     permissions: PermissionApiProtocol
+    tray_appearance: TrayAppearanceProtocol
+    windowing: WindowingApiProtocol
+    notifications: NotificationApiProtocol
+    clipboard_subscriber: ClipboardSubscriberProtocol
 
     def create_api(self, *, plugin_id: str = "") -> PlatformApi:
         return PlatformApi(self, plugin_id=plugin_id)

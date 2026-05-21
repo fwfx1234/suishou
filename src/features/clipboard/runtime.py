@@ -1,28 +1,7 @@
 from __future__ import annotations
 
-import sys
-
 from app.services.clipboard import ClipboardService, DEFAULT_CLIPBOARD_CONFIG
 from app.storage import StorageManager
-
-
-def _create_backend():
-    if sys.platform == "win32":
-        from app.services.clipboard.backends.win32_backend import Win32ClipboardBackend
-
-        return Win32ClipboardBackend()
-    if sys.platform == "darwin":
-        try:
-            from app.services.clipboard.backends.macos_backend import MacOSClipboardBackend
-
-            return MacOSClipboardBackend()
-        except Exception:
-            from app.services.clipboard.backends.pyperclip_backend import PyperclipClipboardBackend
-
-            return PyperclipClipboardBackend()
-    from app.services.clipboard.backends.noop_backend import NoopClipboardBackend
-
-    return NoopClipboardBackend()
 
 
 class ClipboardRuntime:
@@ -49,7 +28,7 @@ class ClipboardRuntime:
                 "clipboard/settings",
                 defaults=DEFAULT_CLIPBOARD_CONFIG,
             ),
-            backend=_create_backend(),
+            backend=ctx.platform.clipboard_subscriber,
         )
         self._service.start()
         ctx.services.clipboard = self._service

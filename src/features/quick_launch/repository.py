@@ -11,8 +11,9 @@ from app.storage import SQLiteDatabase, SQLiteRow
 
 ActionKind = Literal["script", "open_path", "open_url"]
 ScriptType = Literal["shell", "node", "python", "other"]
+ScriptSource = Literal["path", "inline"]
 FeedbackMode = Literal["silent", "popup", "notification"]
-RunStatus = Literal["success", "failed", "timeout", "error"]
+RunStatus = Literal["success", "failed", "timeout", "error", "stopped"]
 
 STDIO_LIMIT_BYTES = 64 * 1024
 
@@ -24,6 +25,8 @@ class QuickLaunchAction:
     description: str = ""
     kind: ActionKind = "script"
     script_type: ScriptType = "shell"
+    script_source: ScriptSource = "path"
+    script_body: str = ""
     interpreter: str = ""
     path: str = ""
     url: str = ""
@@ -47,6 +50,8 @@ class QuickLaunchAction:
             "description": self.description,
             "kind": self.kind,
             "scriptType": self.script_type,
+            "scriptSource": self.script_source,
+            "scriptBody": self.script_body,
             "interpreter": self.interpreter,
             "path": self.path,
             "url": self.url,
@@ -134,6 +139,8 @@ class QuickLaunchRepository:
         name: str,
         kind: ActionKind = "script",
         script_type: ScriptType = "shell",
+        script_source: ScriptSource = "path",
+        script_body: str = "",
         interpreter: str = "",
         description: str = "",
         path: str = "",
@@ -159,17 +166,19 @@ class QuickLaunchRepository:
             cursor = conn.execute(
                 """
                 INSERT INTO quick_launch_actions
-                    (name, description, kind, script_type, interpreter,
+                    (name, description, kind, script_type, script_source, script_body, interpreter,
                      path, url, args, cwd, env_json, keywords_json, prefixes_json,
                      icon, feedback_mode, timeout_sec, enabled, sort_order,
                      created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     name.strip(),
                     description,
                     kind,
                     script_type,
+                    script_source,
+                    script_body,
                     interpreter,
                     path,
                     url,
@@ -201,6 +210,8 @@ class QuickLaunchRepository:
             "description": existing.description,
             "kind": existing.kind,
             "script_type": existing.script_type,
+            "script_source": existing.script_source,
+            "script_body": existing.script_body,
             "interpreter": existing.interpreter,
             "path": existing.path,
             "url": existing.url,
@@ -223,7 +234,8 @@ class QuickLaunchRepository:
             conn.execute(
                 """
                 UPDATE quick_launch_actions
-                SET name = ?, description = ?, kind = ?, script_type = ?, interpreter = ?,
+                SET name = ?, description = ?, kind = ?, script_type = ?, script_source = ?,
+                    script_body = ?, interpreter = ?,
                     path = ?, url = ?, args = ?, cwd = ?, env_json = ?, keywords_json = ?,
                     prefixes_json = ?, icon = ?, feedback_mode = ?, timeout_sec = ?,
                     enabled = ?, sort_order = ?, updated_at = ?
@@ -234,6 +246,8 @@ class QuickLaunchRepository:
                     str(merged["description"] or ""),
                     str(merged["kind"]),
                     str(merged["script_type"]),
+                    str(merged["script_source"]),
+                    str(merged["script_body"] or ""),
                     str(merged["interpreter"] or ""),
                     str(merged["path"] or ""),
                     str(merged["url"] or ""),
@@ -382,6 +396,8 @@ class QuickLaunchRepository:
                     description TEXT NOT NULL DEFAULT '',
                     kind TEXT NOT NULL DEFAULT 'script',
                     script_type TEXT NOT NULL DEFAULT 'shell',
+                    script_source TEXT NOT NULL DEFAULT 'path',
+                    script_body TEXT NOT NULL DEFAULT '',
                     interpreter TEXT NOT NULL DEFAULT '',
                     path TEXT NOT NULL DEFAULT '',
                     url TEXT NOT NULL DEFAULT '',
@@ -422,6 +438,51 @@ class QuickLaunchRepository:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_ql_runs_action ON quick_launch_runs(action_id, id DESC)"
             )
+            self._migrate_actions_schema(conn)
+
+    @staticmethod
+    def _migrate_actions_schema(conn) -> None:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(quick_launch_actions)").fetchall()}
+        if "script_type" not in columns:
+            conn.execute(
+                "ALTER TABLE quick_launch_actions ADD COLUMN script_type TEXT NOT NULL DEFAULT 'shell'"
+            )
+        if "interpreter" not in columns:
+            conn.execute(
+                "ALTER TABLE quick_launch_actions ADD COLUMN interpreter TEXT NOT NULL DEFAULT ''"
+            )
+        if "args" not in columns:
+            conn.execute(
+                "ALTER TABLE quick_launch_actions ADD COLUMN args TEXT NOT NULL DEFAULT ''"
+            )
+            if "command" in columns:
+                conn.execute(
+                    "UPDATE quick_launch_actions SET args = COALESCE(command, '') WHERE COALESCE(args, '') = ''"
+                )
+        if "script_source" not in columns:
+            conn.execute(
+                "ALTER TABLE quick_launch_actions ADD COLUMN script_source TEXT NOT NULL DEFAULT 'path'"
+            )
+        if "script_body" not in columns:
+            conn.execute(
+                "ALTER TABLE quick_launch_actions ADD COLUMN script_body TEXT NOT NULL DEFAULT ''"
+            )
+        legacy_script_kinds = ("shell", "node", "python", "other")
+        conn.execute(
+            f"""
+            UPDATE quick_launch_actions
+            SET script_type = kind, kind = 'script'
+            WHERE kind IN ({','.join('?' for _ in legacy_script_kinds)})
+            """,
+            legacy_script_kinds,
+        )
+        conn.execute(
+            """
+            UPDATE quick_launch_actions
+            SET feedback_mode = 'notification'
+            WHERE feedback_mode NOT IN ('silent', 'popup', 'notification')
+            """
+        )
 
     @staticmethod
     def _next_sort_order(conn) -> int:
@@ -460,6 +521,8 @@ class QuickLaunchRepository:
             description=str(row["description"] or ""),
             kind=str(row["kind"] or "script"),  # type: ignore[arg-type]
             script_type=str(row["script_type"] or "shell"),  # type: ignore[arg-type]
+            script_source=str(row["script_source"] or "path"),  # type: ignore[arg-type]
+            script_body=str(row["script_body"] or ""),
             interpreter=str(row["interpreter"] or ""),
             path=str(row["path"] or ""),
             url=str(row["url"] or ""),

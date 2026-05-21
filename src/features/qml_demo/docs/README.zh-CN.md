@@ -15,17 +15,17 @@
 | 第 2 课：布局系统 | RowLayout、ColumnLayout、Grid、anchors | 声明式布局 |
 | 第 3 课：属性绑定 | 双向绑定、声明式绑定、颜色选择器 | QML 最核心特性 |
 | 第 4 课：信号与槽 | Signal → QML Connections、@Slot → Python | Python ↔ QML 通信 |
-| 第 5 课：控件大全 | UiButton、UiTextField、UiSwitch 等 | 通用 UI 组件 |
+| 第 5 课：控件大全 | UiButton、UiTextField、UiPopup、UiCard 等 | 通用 UI 组件 |
 | 第 6 课：自定义组件 | property + signal 封装、component 关键字 | 组件化开发 |
 | 第 7 课：ListView | model/delegate 模式、数据过滤 | 数据驱动列表 |
 | 第 8 课：主题系统 | Theme.token()、深浅色切换 | 设计令牌 |
 | 第 9 课：动画效果 | Behavior、NumberAnimation、RotationAnimation | 声明式动画 |
-| 第 10 课：Dialog 弹窗 | MessageDialog、FileDialog、Popup | 弹窗系统 |
+| 第 10 课：Dialog 弹窗 | MessageDialog、FileDialog、UiPopup | 弹窗系统 |
 | 第 11 课：Loader 加载 | Loader、动态组件、source 切换 | 按需加载 |
 | 第 12 课：TabBar 选项卡 | TabBar、TabButton、StackLayout | 多页面切换 |
 | 第 13 课：Timer + 状态 | Timer、states、transitions | 定时器与状态机 |
 | 第 14 课：Slider 滑块 | Slider、SpinBox、RangeSlider | 数值输入 |
-| 第 15 课：ToolTip/Menu | ToolTip、Menu、MenuItem | 辅助交互 |
+| 第 15 课：ToolTip/Menu | ToolTip、UiMenuPopup、UiMenuItem | 辅助交互 |
 | 第 16 课：Gradient/Flow | Gradient、Flow、GridLayout | 视觉与自适应排布 |
 | 第 17 课：Keys/Shortcut | Keys、Shortcut、focus | 键盘事件 |
 
@@ -60,6 +60,29 @@ src/features/qml_demo/
 ```
 
 ## 学习要点
+
+### 插件通用 UI 组件
+
+新插件页面优先导入公共组件：
+
+```qml
+import "../../app/ui"
+import "../../app/theme"
+```
+
+公共组件默认采用 macOS 适配的紧凑桌面密度和 mac 蓝强调色。常用入口：
+
+| 类型 | 组件 |
+|------|------|
+| 操作 | UiButton、UiIconButton、UiToolbarButton |
+| 输入 | UiTextField、UiTextArea、UiTextEdit、UiComboBox |
+| 浮层 | UiPopup、UiMenuPopup、UiConfirmPopup、UiToast |
+| 展示 | UiCard、UiPanel、UiBadge、UiChip、UiEmptyState、UiListRow |
+| 结构 | UiFormRow、UiDivider、UiScrollView |
+
+业务 QML 不要直接使用原生 `Menu`、`Popup`、`ComboBox`、`TextField`、`TextArea`、`TextEdit`、`Button`。这些原生控件只应出现在 `src/app/ui` 公共组件内部。系统文件选择和消息弹窗可以继续使用 `FileDialog`、`MessageDialog`。
+
+组件库的开发模板和迁移规则见 `src/app/ui/README.zh-CN.md`。后续插件新增输入框、按钮、下拉、菜单、弹窗时，先查公共组件；只有业务强相关的组合容器才放在插件自己的 `components/` 目录里。
 
 ### 每个页面都遵循同一模式
 

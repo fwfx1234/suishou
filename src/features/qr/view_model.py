@@ -17,7 +17,9 @@ class QrViewModel(QObject):
 
     def __init__(self, initial_text: str = "", platform_api: object | None = None) -> None:
         super().__init__()
-        self._service = QrService()
+        if platform_api is None:
+            raise ValueError("QrViewModel requires platform_api")
+        self._service = QrService(paths=platform_api.paths)
         self._platform = platform_api
         self._input_text = initial_text
 

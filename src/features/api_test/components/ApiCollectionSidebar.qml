@@ -798,7 +798,10 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.setAllExpanded(true)
+                        onClicked: {
+                            root.commitActiveRename()
+                            root.setAllExpanded(true)
+                        }
                     }
                     ToolTip.visible: expandAllMouse.containsMouse
                     ToolTip.text: "全部展开"
@@ -821,7 +824,10 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.setAllExpanded(false)
+                        onClicked: {
+                            root.commitActiveRename()
+                            root.setAllExpanded(false)
+                        }
                     }
                     ToolTip.visible: collapseAllMouse.containsMouse
                     ToolTip.text: "全部收起"
@@ -909,7 +915,11 @@ Rectangle {
             MouseArea {
                 width: treeFlick.width
                 height: Math.max(treeFlick.height, treeColumn.implicitHeight)
-                acceptedButtons: Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onPressed: function(mouse) {
+                    if (mouse.button === Qt.LeftButton && root.editingNodeId.length > 0)
+                        root.commitActiveRename()
+                }
                 onClicked: function(mouse) {
                     if (mouse.button === Qt.RightButton) {
                         var p = mapToItem(root, mouse.x, mouse.y)
@@ -1047,8 +1057,9 @@ Rectangle {
                     }
                 }
 
-                TextField {
+                UiTextField {
                     id: inlineRenameInput
+                    dark: root.dark
                     visible: root.editingNodeId === nodeRoot.nodeId
                     z: 4
                     x: {
@@ -1081,7 +1092,12 @@ Rectangle {
                         if (visible) {
                             forceActiveFocus()
                             selectAll()
+                            root.activeRenameText = text
                         }
+                    }
+                    onTextChanged: {
+                        if (visible && root.editingNodeId === nodeRoot.nodeId)
+                            root.activeRenameText = text
                     }
                     onAccepted: root.commitInlineRename(inlineRenameInput.text)
                     Keys.onReturnPressed: root.commitInlineRename(inlineRenameInput.text)
@@ -1101,6 +1117,10 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     z: 2
+                    onPressed: function(mouse) {
+                        if (root.editingNodeId.length > 0 && root.editingNodeId !== nodeRoot.nodeId)
+                            root.commitActiveRename()
+                    }
                     onClicked: function(mouse) {
                         if (mouse.button === Qt.RightButton) {
                             var p = parent.mapToItem(root, mouse.x, mouse.y)
@@ -1128,138 +1148,69 @@ Rectangle {
     }
 
 
-    Popup {
+    UiMenuPopup {
         id: addMenu
-        parent: Overlay.overlay
         width: 148
-        height: 108
-        padding: 0
-        modal: false
-        focus: true
+        padding: 4
+        dark: root.dark
         property real _preferredX: 0
         property real _preferredY: 0
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        background: UiPopupSurface {
-            dark: root.dark
-            radius: Theme.radii.md
-            fillColor: Theme.token("color-bg-surface", root.dark)
-        }
+
         contentItem: Column {
             spacing: 0
-            Rectangle {
-                width: addMenu.width
-                height: 36
-                color: addEndpointMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.space["2.5"]
-                    text: "新建接口"
-                    color: root.textMain
-                    font.pixelSize: Theme.fontSize.body
-                }
-                MouseArea {
-                    id: addEndpointMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.addRootEndpoint()
-                        addMenu.close()
-                    }
+
+            UiMenuItem {
+                width: addMenu.width - 8
+                dark: root.dark
+                text: "新建接口"
+                onTriggered: {
+                    root.addRootEndpoint()
+                    addMenu.close()
                 }
             }
-            Rectangle {
-                width: addMenu.width
-                height: 36
-                color: addFolderMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.space["2.5"]
-                    text: "新建分组"
-                    color: root.textMain
-                    font.pixelSize: Theme.fontSize.body
-                }
-                MouseArea {
-                    id: addFolderMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.addRootFolder()
-                        addMenu.close()
-                    }
+            UiMenuItem {
+                width: addMenu.width - 8
+                dark: root.dark
+                text: "新建分组"
+                onTriggered: {
+                    root.addRootFolder()
+                    addMenu.close()
                 }
             }
-            Rectangle {
-                width: addMenu.width
-                height: 36
-                color: importMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.space["2.5"]
-                    text: "导入 OpenAPI"
-                    color: root.textMain
-                    font.pixelSize: Theme.fontSize.body
-                }
-                MouseArea {
-                    id: importMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.importRequested()
-                        addMenu.close()
-                    }
+            UiMenuItem {
+                width: addMenu.width - 8
+                dark: root.dark
+                text: "导入 OpenAPI"
+                onTriggered: {
+                    root.importRequested()
+                    addMenu.close()
                 }
             }
         }
     }
 
-    Popup {
+    UiMenuPopup {
         id: filterMenu
-        parent: Overlay.overlay
         width: 120
-        height: 6 * 32
-        padding: 0
-        modal: false
-        focus: true
+        padding: 4
+        dark: root.dark
         property real _preferredX: 0
         property real _preferredY: 0
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        background: UiPopupSurface {
-            dark: root.dark
-            radius: Theme.radii.md
-            fillColor: Theme.token("color-bg-surface", root.dark)
-        }
+
         contentItem: Column {
             spacing: 0
             Repeater {
                 model: ["ALL", "GET", "POST", "PUT", "DELETE", "PATCH"]
-                delegate: Rectangle {
+                delegate: UiMenuItem {
                     required property var modelData
-                    width: filterMenu.width
-                    height: 32
-                    color: filterMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-                    Label {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.space["2.5"]
-                        text: modelData === "ALL" ? "全部方法" : modelData
-                        color: root.textMain
-                        font.pixelSize: Theme.fontSize.body
-                    }
-                    MouseArea {
-                        id: filterMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.methodFilterText = modelData
-                            filterMenu.close()
-                        }
+                    width: filterMenu.width - 8
+                    dark: root.dark
+                    text: modelData === "ALL" ? "全部方法" : modelData
+                    checked: root.methodFilterText === modelData
+                    reserveCheckSpace: true
+                    onTriggered: {
+                        root.methodFilterText = modelData
+                        filterMenu.close()
                     }
                 }
             }
@@ -1277,6 +1228,13 @@ Rectangle {
     property string pendingRenameNodeId: ""
     property string pendingRenamePath: ""
     property bool committingRename: false
+    property string activeRenameText: ""
+
+    function commitActiveRename() {
+        if (root.editingNodeId.length === 0)
+            return
+        root.commitInlineRename(root.activeRenameText)
+    }
 
     function collectFolderTargets(nodes, out, parentPath) {
         var list = nodes || []
@@ -1291,27 +1249,13 @@ Rectangle {
         }
     }
 
-    Popup {
+    UiMenuPopup {
         id: contextMenu
-        parent: Overlay.overlay
         width: 180
-        height: contextMenuColumn.implicitHeight + 8
-        padding: 4
-        modal: false
-        focus: true
+        dark: root.dark
         property real _preferredX: 0
         property real _preferredY: 0
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.98; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-            }
-        }
-        background: UiMenuSurface {
-            dark: root.dark
-            radius: 8
-        }
+
         contentItem: Column {
             id: contextMenuColumn
             spacing: 0
@@ -1484,27 +1428,14 @@ Rectangle {
         }
     }
 
-    Popup {
+    UiMenuPopup {
         id: moveMenu
-        parent: Overlay.overlay
         width: 200
-        height: Math.min(300, Math.max(1, root.moveGroupTargets.length) * 28 + 8)
-        padding: 4
-        modal: false
-        focus: true
+        maxPopupHeight: 300
+        dark: root.dark
         property real _preferredX: 0
         property real _preferredY: 0
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.98; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-            }
-        }
-        background: UiMenuSurface {
-            dark: root.dark
-            radius: 8
-        }
+
         contentItem: Column {
             spacing: 0
             Repeater {

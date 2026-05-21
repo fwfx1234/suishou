@@ -295,20 +295,19 @@ Item {
     }
 
     // ===== 扫描 Popup =====
-    Popup {
+    UiPopup {
         id: scanPopup
         modal: true
         focus: true
         width: Math.min(420, root.width - 40)
         height: Math.min(360, root.height - 40)
-        anchors.centerIn: parent
+        x: Math.max(20, (Overlay.overlay.width - width) / 2)
+        y: Math.max(20, (Overlay.overlay.height - height) / 2)
         padding: 0
-        background: Rectangle {
-            color: panelBg
-            radius: Theme.radii.lg
-            border.color: panelBorder
-            border.width: 1
-        }
+        dark: root.dark
+        surfaceRadius: Theme.radii.lg
+        surfaceFillColor: panelBg
+        surfaceBorderColor: panelBorder
 
         ColumnLayout {
             anchors.fill: parent
@@ -395,20 +394,19 @@ Item {
     }
 
     // ===== 历史 Popup =====
-    Popup {
+    UiPopup {
         id: historyPopup
         modal: true
         focus: true
         width: Math.min(480, root.width - 40)
         height: Math.min(420, root.height - 40)
-        anchors.centerIn: parent
+        x: Math.max(20, (Overlay.overlay.width - width) / 2)
+        y: Math.max(20, (Overlay.overlay.height - height) / 2)
         padding: 0
-        background: Rectangle {
-            color: panelBg
-            radius: Theme.radii.lg
-            border.color: panelBorder
-            border.width: 1
-        }
+        dark: root.dark
+        surfaceRadius: Theme.radii.lg
+        surfaceFillColor: panelBg
+        surfaceBorderColor: panelBorder
 
         ColumnLayout {
             anchors.fill: parent

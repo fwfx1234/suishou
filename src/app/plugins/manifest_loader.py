@@ -7,6 +7,7 @@ from typing import Any
 
 from app.paths import resource_root
 from app.logging import get_logger
+from app.settings import configured_text
 from app.plugins.manifest import (
     CommandContribution,
     ContextMatcher,
@@ -40,7 +41,7 @@ def default_bundled_plugin_dirs() -> list[Path]:
 def default_external_plugin_dirs() -> list[Path]:
     """Return user/plugin search directories without creating them."""
 
-    configured = os.getenv("PY_DESKTOP_TOOLS_PLUGIN_DIR", "").strip()
+    configured = configured_text("paths.pluginDirs", "PY_DESKTOP_TOOLS_PLUGIN_DIR").strip()
     if configured:
         return [
             Path(item).expanduser()

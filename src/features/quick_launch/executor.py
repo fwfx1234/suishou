@@ -3,11 +3,13 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
-import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from threading import RLock
 from time import perf_counter
+from typing import Callable
 
 from .parameters import MissingParameterError, extract_parameters, substitute, substitute_mapping
 from .repository import QuickLaunchAction, QuickLaunchRepository, QuickLaunchRun
@@ -16,7 +18,7 @@ from .repository import QuickLaunchAction, QuickLaunchRepository, QuickLaunchRun
 @dataclass(slots=True)
 class ExecutionResult:
     ok: bool
-    status: str  # success | failed | timeout | error
+    status: str  # success | failed | timeout | error | stopped
     message: str = ""
     run: QuickLaunchRun | None = None
     missing_parameters: list[str] | None = None
@@ -27,6 +29,12 @@ SCRIPT_INTERPRETERS: dict[str, list[str]] = {
     "shell": ["/bin/zsh"],
     "node": ["node"],
     "python": ["python3"],
+}
+
+INLINE_FLAGS: dict[str, str] = {
+    "shell": "-c",
+    "node": "-e",
+    "python": "-c",
 }
 
 
@@ -40,14 +48,107 @@ class QuickLaunchExecutor:
         *,
         subprocess_run=None,
         notification_runner=None,
+        thread_pool: ThreadPoolExecutor | None = None,
     ) -> None:
         self._repository = repository
         self._platform = platform
         self._subprocess_run = subprocess_run or self._default_subprocess_run
-        self._notification_runner = notification_runner or self._default_notification_runner
+        if notification_runner is None:
+            notifications = getattr(platform, "notifications", None)
+            notify = getattr(notifications, "notify", None) if notifications is not None else None
+            notification_runner = notify or self._noop_notification_runner
+        self._notification_runner = notification_runner
+        self._thread_pool = thread_pool or ThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="quick-launch"
+        )
+        self._owns_thread_pool = thread_pool is None
+        self._running_lock = RLock()
+        self._running_ids: set[int] = set()
+        self._running_processes: dict[int, subprocess.Popen] = {}
+        self._stopping_ids: set[int] = set()
+        self._pending_cancel: set[int] = set()
+
+    def is_running(self, action_id: int) -> bool:
+        with self._running_lock:
+            return int(action_id) in self._running_ids
+
+    def stop(self, action_id: int) -> bool:
+        """Best-effort terminate of a running action's process."""
+        key = int(action_id)
+        with self._running_lock:
+            proc = self._running_processes.get(key)
+            if proc is None:
+                # Task is queued but Popen hasn't registered yet — mark for cancel
+                # so the worker bails as soon as the proc starts.
+                if key in self._running_ids:
+                    self._pending_cancel.add(key)
+                    self._stopping_ids.add(key)
+                    return True
+                return False
+            self._stopping_ids.add(key)
+        try:
+            proc.terminate()
+            return True
+        except Exception:
+            with self._running_lock:
+                self._stopping_ids.discard(key)
+            return False
+
+    def stop_all(self) -> None:
+        with self._running_lock:
+            items = list(self._running_processes.items())
+            for action_id, _ in items:
+                self._stopping_ids.add(action_id)
+        for _, proc in items:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+
+    def execute_in_background(
+        self,
+        action: QuickLaunchAction,
+        *,
+        parameters: dict[str, str] | None = None,
+        on_done: Callable[[ExecutionResult], None] | None = None,
+    ) -> bool:
+        """Run an action off the main thread. Returns False if already running."""
+        with self._running_lock:
+            if action.id in self._running_ids:
+                return False
+            self._running_ids.add(action.id)
+            self._pending_cancel.discard(action.id)
+            self._stopping_ids.discard(action.id)
+
+        def _task() -> None:
+            try:
+                result = self.execute(action, parameters=parameters)
+            finally:
+                with self._running_lock:
+                    self._running_ids.discard(action.id)
+            if on_done is not None:
+                try:
+                    on_done(result)
+                except Exception:
+                    pass
+
+        self._thread_pool.submit(_task)
+        return True
+
+    def shutdown(self, wait: bool = False) -> None:
+        self.stop_all()
+        if self._owns_thread_pool:
+            self._thread_pool.shutdown(wait=wait, cancel_futures=True)
 
     def required_parameters(self, action: QuickLaunchAction) -> list[str]:
-        sources = [action.path, action.url, action.args, action.cwd, action.interpreter]
+        sources = [
+            action.path,
+            action.url,
+            action.args,
+            action.cwd,
+            action.interpreter,
+            action.script_body,
+        ]
         sources.extend(action.env.values())
         return [spec.name for spec in extract_parameters(*sources)]
 
@@ -83,10 +184,16 @@ class QuickLaunchExecutor:
     # ----- kind handlers -----
 
     def _execute_script(self, action: QuickLaunchAction, values: dict[str, str]) -> ExecutionResult:
-        path = substitute(action.path, values, quote=False).strip()
-        if not path:
-            return self._record_error(action, "脚本路径为空")
-        argv = self._build_script_argv(action, path, values)
+        if action.script_source == "inline":
+            body = substitute(action.script_body, values, quote=False)
+            if not body.strip():
+                return self._record_error(action, "脚本内容为空")
+            argv = self._build_inline_argv(action, body, values)
+        else:
+            path = substitute(action.path, values, quote=False).strip()
+            if not path:
+                return self._record_error(action, "脚本路径为空")
+            argv = self._build_script_argv(action, path, values)
         cwd = self._resolve_cwd(action, values)
         env = self._resolve_env(action, values)
         return self._dispatch_capture(action, argv, cwd=cwd, env=env)
@@ -122,6 +229,25 @@ class QuickLaunchExecutor:
         extra_args = shlex.split(extra_args_str) if extra_args_str else []
         return [*interpreter_argv, path, *extra_args]
 
+    def _build_inline_argv(
+        self,
+        action: QuickLaunchAction,
+        body: str,
+        values: dict[str, str],
+    ) -> list[str]:
+        extra_args_str = substitute(action.args, values, quote=False).strip()
+        extra_args = shlex.split(extra_args_str) if extra_args_str else []
+        override = substitute(action.interpreter, values, quote=False).strip()
+        if override:
+            interpreter_argv = shlex.split(override)
+            return [*interpreter_argv, body, *extra_args]
+        flag = INLINE_FLAGS.get(action.script_type, "-c")
+        interpreter_argv = list(SCRIPT_INTERPRETERS.get(action.script_type, ["/bin/zsh"]))
+        argv = [*interpreter_argv, flag, body]
+        if action.script_type == "shell":
+            argv.append("quick-launch")
+        return [*argv, *extra_args]
+
     def _interpreter_argv(
         self, action: QuickLaunchAction, values: dict[str, str]
     ) -> list[str]:
@@ -147,38 +273,65 @@ class QuickLaunchExecutor:
         start_ts = perf_counter()
         timeout = action.timeout_sec if action.timeout_sec and action.timeout_sec > 0 else None
         capture = action.feedback_mode != "silent"
+
+        def _on_started(proc: subprocess.Popen) -> None:
+            with self._running_lock:
+                self._running_processes[action.id] = proc
+                should_kill = action.id in self._pending_cancel
+                self._pending_cancel.discard(action.id)
+            if should_kill:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+
         try:
-            completed = self._subprocess_run(
-                argv,
-                cwd=cwd or None,
-                env=env,
-                timeout=timeout,
-                capture=capture,
-            )
-        except subprocess.TimeoutExpired as exc:
-            duration_ms = int((perf_counter() - start_ts) * 1000)
-            finished_at = self._now()
-            run = self._repository.record_run(
-                action_id=action.id,
-                status="timeout",
-                exit_code=None,
-                stdout=self._coerce_stream(exc.stdout) if capture else "",
-                stderr=self._coerce_stream(exc.stderr) if capture else "",
-                duration_ms=duration_ms,
-                started_at=started_at,
-                finished_at=finished_at,
-                message=f"执行超时 ({action.timeout_sec}s)",
-            )
-            return ExecutionResult(ok=False, status="timeout", message=run.message, run=run)
-        except FileNotFoundError as exc:
-            return self._record_error(action, f"找不到可执行文件: {exc}")
-        except OSError as exc:
-            return self._record_error(action, f"执行失败: {exc}")
+            try:
+                completed = self._subprocess_run(
+                    argv,
+                    cwd=cwd or None,
+                    env=env,
+                    timeout=timeout,
+                    capture=capture,
+                    on_started=_on_started,
+                )
+            except subprocess.TimeoutExpired as exc:
+                duration_ms = int((perf_counter() - start_ts) * 1000)
+                finished_at = self._now()
+                run = self._repository.record_run(
+                    action_id=action.id,
+                    status="timeout",
+                    exit_code=None,
+                    stdout=self._coerce_stream(exc.stdout) if capture else "",
+                    stderr=self._coerce_stream(exc.stderr) if capture else "",
+                    duration_ms=duration_ms,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    message=f"执行超时 ({action.timeout_sec}s)",
+                )
+                return ExecutionResult(ok=False, status="timeout", message=run.message, run=run)
+            except FileNotFoundError as exc:
+                return self._record_error(action, f"找不到可执行文件: {exc}")
+            except OSError as exc:
+                return self._record_error(action, f"执行失败: {exc}")
+        finally:
+            with self._running_lock:
+                self._running_processes.pop(action.id, None)
+                was_stopped = action.id in self._stopping_ids
+                self._stopping_ids.discard(action.id)
 
         duration_ms = int((perf_counter() - start_ts) * 1000)
         finished_at = self._now()
         exit_code = int(completed.returncode)
-        status = "success" if exit_code == 0 else "failed"
+        if was_stopped:
+            status = "stopped"
+            message = "已手动停止"
+        elif exit_code == 0:
+            status = "success"
+            message = ""
+        else:
+            status = "failed"
+            message = f"退出码 {exit_code}"
         stdout = self._coerce_stream(getattr(completed, "stdout", "")) if capture else ""
         stderr = self._coerce_stream(getattr(completed, "stderr", "")) if capture else ""
         run = self._repository.record_run(
@@ -190,7 +343,7 @@ class QuickLaunchExecutor:
             duration_ms=duration_ms,
             started_at=started_at,
             finished_at=finished_at,
-            message="" if status == "success" else f"退出码 {exit_code}",
+            message=message,
         )
         return ExecutionResult(ok=status == "success", status=status, message=run.message, run=run)
 
@@ -271,32 +424,33 @@ class QuickLaunchExecutor:
             pass
 
     @staticmethod
-    def _default_subprocess_run(argv, *, cwd, env, timeout, capture):
+    def _default_subprocess_run(argv, *, cwd, env, timeout, capture, on_started=None):
+        popen_kwargs: dict = {"cwd": cwd, "env": env, "start_new_session": True}
         if capture:
-            return subprocess.run(
-                argv, cwd=cwd, env=env, timeout=timeout,
-                capture_output=True, text=True,
+            popen_kwargs.update(
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
-        return subprocess.run(
-            argv, cwd=cwd, env=env, timeout=timeout,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-
-    @staticmethod
-    def _default_notification_runner(*, title: str, body: str, success: bool) -> None:
-        if sys.platform != "darwin":
-            return
-        safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
-        safe_body = body.replace("\\", "\\\\").replace('"', '\\"')
-        script = (
-            f'display notification "{safe_body}" with title "{safe_title}" '
-            f'subtitle "{"成功" if success else "失败"}"'
-        )
-        try:
-            subprocess.Popen(
-                ["osascript", "-e", script],
+        else:
+            popen_kwargs.update(
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        except OSError:
-            pass
+        proc = subprocess.Popen(argv, **popen_kwargs)
+        if on_started is not None:
+            on_started(proc)
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                stdout, stderr = proc.communicate()
+            except Exception:
+                stdout, stderr = ("", "") if capture else (None, None)
+            raise subprocess.TimeoutExpired(argv, timeout, output=stdout, stderr=stderr)
+        return subprocess.CompletedProcess(argv, proc.returncode, stdout=stdout, stderr=stderr)
+
+    @staticmethod
+    def _noop_notification_runner(*, title: str, body: str, success: bool | None = None) -> None:
+        del title, body, success

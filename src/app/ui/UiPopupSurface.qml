@@ -8,6 +8,9 @@ Item {
     property bool dark: false
     property int radius: Theme.radii.lg
     property color fillColor: Theme.token("color-bg-surface", dark)
+    property int borderWidth: 1
+    property color borderColor: root.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.08)
+
     MultiEffect {
         anchors.fill: surface
         source: surface
@@ -23,7 +26,8 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.fillColor
-        border.width: 0
-        border.color: "transparent"
+        border.width: root.borderWidth
+        border.color: root.borderColor
+        antialiasing: true
     }
 }

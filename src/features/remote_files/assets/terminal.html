@@ -56,6 +56,10 @@
       convertEol: true,
       fontFamily: 'SF Mono, Menlo, Consolas, monospace',
       fontSize: 13,
+      scrollback: 8000,
+      fastScrollModifier: 'alt',
+      fastScrollSensitivity: 5,
+      scrollSensitivity: 1,
       theme: currentTheme()
     });
     const fitAddon = new FitAddon.FitAddon();
@@ -85,18 +89,52 @@
       }
     }
 
-    term.write('SSH terminal ready\r\n');
+    let pendingOutput = '';
+    let writeScheduled = false;
+    let writeInProgress = false;
+    const maxWriteChunk = 65536;
+
+    function scheduleFlush() {
+      if (writeScheduled || writeInProgress) return;
+      writeScheduled = true;
+      window.requestAnimationFrame(flushOutput);
+    }
+
+    function flushOutput() {
+      writeScheduled = false;
+      if (writeInProgress || pendingOutput.length === 0) return;
+      const chunk = pendingOutput.length > maxWriteChunk
+        ? pendingOutput.slice(0, maxWriteChunk)
+        : pendingOutput;
+      pendingOutput = pendingOutput.slice(chunk.length);
+      writeInProgress = true;
+      term.write(chunk, function() {
+        writeInProgress = false;
+        if (pendingOutput.length > 0) {
+          window.setTimeout(scheduleFlush, 0);
+        }
+      });
+    }
+
+    function writeOutput(text) {
+      const chunk = text || '';
+      if (!chunk) return;
+      pendingOutput += chunk;
+      scheduleFlush();
+    }
+
+    writeOutput('SSH terminal ready\r\n');
     new QWebChannel(qt.webChannelTransport, function(channel) {
       bridge = channel.objects.remoteTerminalBridge;
       if (!bridge) {
-        term.write('Remote terminal bridge unavailable\r\n');
+        writeOutput('Remote terminal bridge unavailable\r\n');
         return;
       }
       bridge.output.connect(function(text) {
-        term.write(text || '');
+        writeOutput(text || '');
       });
       bridge.closed.connect(function(message) {
-        term.write('\r\n[closed] ' + (message || '') + '\r\n');
+        writeOutput('\r\n[closed] ' + (message || '') + '\r\n');
       });
       term.onData(function(data) {
         bridge.sendInput(data);

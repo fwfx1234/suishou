@@ -101,7 +101,11 @@ class QuickLaunchRegistrar:
     def _default_subtitle(action: QuickLaunchAction) -> str:
         if action.kind == "script":
             prefix = action.script_type if action.script_type else ""
-            target = action.path or ""
+            if action.script_source == "inline":
+                target = (action.script_body or "").strip().splitlines()[0:1]
+                target = target[0] if target else ""
+            else:
+                target = action.path or ""
             return f"{prefix}: {target}" if prefix else target
         if action.kind == "open_path":
             return action.path

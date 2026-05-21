@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -10,6 +9,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
 from .app_bootstrap import ApplicationBootstrapper
+from .settings import configured_bool
 
 
 class QmlHotReloader(QObject):
@@ -77,7 +77,7 @@ class ApplicationRuntime:
         app_context.start()
         self._log.debug("app.context.start_complete", "应用上下文启动完成", elapsedMs=int((perf_counter() - start_started_at) * 1000))
 
-        if os.getenv("PY_DESKTOP_QML_HOT_RELOAD", "").strip() in {"1", "true", "TRUE"}:
+        if configured_bool("developer.qmlHotReload", "PY_DESKTOP_QML_HOT_RELOAD", False):
             hot_reload_started_at = perf_counter()
             hot_reloader = QmlHotReloader(
                 app_context.engine,

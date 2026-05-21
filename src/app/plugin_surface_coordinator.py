@@ -48,8 +48,15 @@ def _icon_from_manifest(value: str, app_dir: Path) -> QIcon:
 def _plugin_window_config(session: PluginSession, screen: object = None) -> dict:
     options = session.manifest.window_options or {}
     always_on_top = bool(options.get("alwaysOnTop") or options.get("always_on_top"))
+    close_on_esc = bool(options.get("closeOnEsc") or options.get("close_on_esc"))
     if options.get("fullscreen"):
-        return {"fullscreen": True, "width": 800, "height": 600, "alwaysOnTop": always_on_top}
+        return {
+            "fullscreen": True,
+            "width": 800,
+            "height": 600,
+            "alwaysOnTop": always_on_top,
+            "closeOnEsc": close_on_esc,
+        }
     if screen is not None:
         screen_geo = screen.availableGeometry()
         sw, sh = screen_geo.width(), screen_geo.height()
@@ -60,6 +67,7 @@ def _plugin_window_config(session: PluginSession, screen: object = None) -> dict
         "width": _resolve_dimension(options.get("width"), sw, 800),
         "height": _resolve_dimension(options.get("height"), sh, 600),
         "alwaysOnTop": always_on_top,
+        "closeOnEsc": close_on_esc,
     }
 
 
@@ -111,43 +119,36 @@ def _window_dimension(win: object, name: str, default: int) -> int:
 
 
 def focused_window_point() -> QPoint | None:
-    if sys.platform != "darwin":
-        return None
-    try:
-        from app.platform.macos.windowing import focused_window_center
-
-        point = focused_window_center()
-    except Exception:
-        return None
+    point = _get_windowing().focused_window_center()
     if point is None:
         return None
     try:
         x, y = point
-        return QPoint(round(float(x)), round(float(y)))
+        return QPoint(int(x), int(y))
     except (TypeError, ValueError):
         return None
 
 
-def _configure_macos_overlay_window(window: object, *, force_top: bool = True) -> bool:
-    if sys.platform != "darwin":
-        return False
-    try:
-        from app.platform.macos.windowing import configure_overlay_window
-
-        return configure_overlay_window(window, force_top=force_top)
-    except Exception:
-        return False
+_windowing_singleton: object | None = None
 
 
-def _activate_macos_window(window: object) -> bool:
-    if sys.platform != "darwin":
-        return False
-    try:
-        from app.platform.macos.windowing import activate_window
+def _get_windowing() -> object:
+    """模块单例 windowing；测试和老调用方可以不显式注入。"""
+    global _windowing_singleton
+    if _windowing_singleton is None:
+        if sys.platform == "darwin":
+            from app.platform.macos.windowing import MacOSWindowingApi
 
-        return activate_window(window)
-    except Exception:
-        return False
+            _windowing_singleton = MacOSWindowingApi()
+        elif sys.platform == "win32":
+            from app.platform.windows.windowing import WindowsWindowingApi
+
+            _windowing_singleton = WindowsWindowingApi()
+        else:
+            from app.platform.noop.windowing import NoopWindowingApi
+
+            _windowing_singleton = NoopWindowingApi()
+    return _windowing_singleton
 
 
 def _center_window_once(win: object, screen: object, width: int, height: int) -> None:
@@ -188,6 +189,7 @@ class PluginSurfaceCoordinator:
         launcher_bridge: object | None = None,
         launcher_window: object | None = None,
         on_retained_close: Callable[[str, str], None] | None = None,
+        windowing: object | None = None,
     ) -> None:
         self._engine = engine
         self._qt_app = qt_app
@@ -196,6 +198,7 @@ class PluginSurfaceCoordinator:
         self._bridge = launcher_bridge
         self._launcher_window = launcher_window
         self._on_retained_close = on_retained_close
+        self._windowing = windowing or _get_windowing()
         self._windows: dict[str, PluginWindowSurface] = {}
         self._opening_windows: set[str] = set()
         self._log = get_logger("app.plugin_surface_coordinator")
@@ -279,7 +282,7 @@ class PluginSurfaceCoordinator:
                     force_top=bool(surface.window.property("alwaysOnTop")),
                 )
                 surface.window.raise_()
-                _activate_macos_window(surface.window)
+                self._windowing.activate_window(surface.window)
                 surface.window.requestActivate()
                 QTimer.singleShot(50, lambda w=surface.window: self._activate_surface_window(w))
                 return True
@@ -306,6 +309,7 @@ class PluginSurfaceCoordinator:
                 "initialWidth": wc["width"],
                 "initialHeight": wc["height"],
                 "alwaysOnTop": wc["alwaysOnTop"],
+                "closeOnEsc": wc["closeOnEsc"],
                 "retainOnClose": True,
             }
         )
@@ -319,6 +323,7 @@ class PluginSurfaceCoordinator:
         win.setProperty("initialWidth", wc["width"])
         win.setProperty("initialHeight", wc["height"])
         win.setProperty("alwaysOnTop", wc["alwaysOnTop"])
+        win.setProperty("closeOnEsc", wc["closeOnEsc"])
         win.setProperty("retainOnClose", True)
         if wc["fullscreen"]:
             win.showFullScreen()
@@ -361,7 +366,7 @@ class PluginSurfaceCoordinator:
                     w, width, height
                 ),
             )
-        _activate_macos_window(win)
+        self._windowing.activate_window(win)
         win.requestActivate()
         QTimer.singleShot(50, lambda w=win: self._activate_surface_window(w))
         return True
@@ -454,7 +459,7 @@ class PluginSurfaceCoordinator:
         _center_window_once(window, target_screen, width, height)
 
     def _configure_surface_window(self, window: object, *, force_top: bool = True) -> None:
-        _configure_macos_overlay_window(window, force_top=force_top)
+        self._windowing.configure_overlay_window(window, force_top=force_top)
 
     def _activate_surface_window(self, window: object) -> None:
         if not _is_qobject_alive(window):
@@ -470,7 +475,7 @@ class PluginSurfaceCoordinator:
                 raise_window()
             except RuntimeError:
                 return
-        _activate_macos_window(window)
+        self._windowing.activate_window(window)
         request_activate = getattr(window, "requestActivate", None)
         if callable(request_activate):
             try:

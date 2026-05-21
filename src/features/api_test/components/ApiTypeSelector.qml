@@ -69,22 +69,15 @@ Item {
         }
     }
 
-    Popup {
+    UiMenuPopup {
         id: popup
+        parent: root
         x: 0
         y: root.height + 4
         width: Math.max(root.width, 132)
         height: Math.min(240, 8 + root.model.length * 30)
         padding: 4
-        modal: false
-        focus: true
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-
-        background: UiPopupSurface {
-            dark: root.dark
-            radius: Theme.radii.md
-            fillColor: Theme.token("color-bg-surface", root.dark)
-        }
+        dark: root.dark
 
         contentItem: Column {
             spacing: 2

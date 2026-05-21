@@ -100,6 +100,9 @@ class RemoteSession:
         if self._on_snapshot_changed is not None:
             self._on_snapshot_changed(self.profile.id)
 
+    def append_message(self, text: str) -> None:
+        self.update_snapshot(message=str(text or ""))
+
     def append_ftp_log(self, line: str) -> None:
         if not line:
             return

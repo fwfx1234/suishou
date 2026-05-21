@@ -303,12 +303,10 @@ Item {
                     }
                     onTabCloseClicked: function(index) { apiTestVm.closeCurrentTab(); root.syncRequestActionBarFromCurrentTab() }
                     onTabMoreClicked: function(buttonItem) {
-                        var p = buttonItem.mapToItem(root, 0, buttonItem.height + 4)
-                        tabActionsMenu.x = p.x; tabActionsMenu.y = p.y; tabActionsMenu.open()
+                        tabActionsMenu.openAt(buttonItem, 0, buttonItem.height + 4)
                     }
                     onEnvironmentSelected: function(buttonItem) {
-                        var p = buttonItem.mapToItem(root, 0, buttonItem.height + 4)
-                        envPopup.x = p.x; envPopup.y = p.y; envPopup.open()
+                        envPopup.openAt(buttonItem, 0, buttonItem.height + 4)
                     }
                 }
 

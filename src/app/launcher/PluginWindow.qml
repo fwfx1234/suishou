@@ -14,6 +14,7 @@ Window {
     property int initialWidth: 800
     property int initialHeight: 600
     property bool alwaysOnTop: false
+    property bool closeOnEsc: false
     property bool isMacos: typeof app !== "undefined" && app ? app.isMacos : false
     property bool retainOnClose: true
     signal retainedCloseRequested(string pluginId)
@@ -79,7 +80,7 @@ Window {
         }
     }
 
-    // Ctrl+W / Esc 关闭
+    // Ctrl+W 关闭；Esc 仅在 closeOnEsc 为 true 的插件窗口生效
     Shortcut {
         sequence: "Ctrl+W"
         onActivated: pluginWin.close()
@@ -87,6 +88,7 @@ Window {
 
     Shortcut {
         sequence: "Esc"
+        enabled: pluginWin.closeOnEsc
         onActivated: pluginWin.close()
     }
 }

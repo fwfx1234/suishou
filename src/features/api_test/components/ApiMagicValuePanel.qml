@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,6 +15,10 @@ Rectangle {
     property color textMain: "#333333"
     property color textMuted: "#666666"
     property color textSubtle: Theme.token("color-text-secondary", dark)
+    readonly property color rowHover: dark ? Qt.rgba(1, 1, 1, 0.055) : Qt.rgba(0, 0, 0, 0.035)
+    readonly property color subtleFill: dark ? Qt.rgba(1, 1, 1, 0.045) : Qt.rgba(0, 0, 0, 0.028)
+    readonly property color accentSoft: dark ? Qt.rgba(0.04, 0.52, 1, 0.16) : Qt.rgba(0.04, 0.52, 1, 0.09)
+    readonly property color accentBorder: dark ? Qt.rgba(0.04, 0.52, 1, 0.24) : Qt.rgba(0.04, 0.52, 1, 0.14)
     property var items: [
         { group: "时间", title: "时间戳", desc: "Unix 秒级时间戳", value: "{{$timestamp}}" },
         { group: "时间", title: "毫秒时间戳", desc: "Unix 毫秒时间戳", value: "{{$timestamp_ms}}" },
@@ -40,10 +46,10 @@ Rectangle {
     signal insertRequested(string valueText)
     signal closeRequested()
 
-    radius: Theme.radii.md
+    radius: 12
     color: root.panelBg
     border.width: 1
-    border.color: root.panelBorder
+    border.color: root.dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.07)
     clip: true
 
     ColumnLayout {
@@ -52,48 +58,57 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            Layout.preferredHeight: 44
             color: "transparent"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: Theme.space["2.5"]
+                anchors.leftMargin: Theme.space["3"]
                 anchors.rightMargin: Theme.space["2"]
-                spacing: Theme.space["2"]
+                spacing: Theme.space["2.5"]
+
+                Rectangle {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    radius: Theme.radii.sm
+                    color: root.accentSoft
+                    border.width: 1
+                    border.color: root.accentBorder
+
+                    UiIcon {
+                        anchors.centerIn: parent
+                        width: 14
+                        height: 14
+                        iconSize: 14
+                        useQta: true
+                        name: "mdi6.code-json"
+                        color: Theme.token("color-primary-active", root.dark)
+                    }
+                }
 
                 Label {
-                    text: "魔法参数"
+                    text: "插入变量"
                     color: root.textMain
-                    font.bold: true
                     font.pixelSize: Theme.fontSize.body
+                    font.weight: Font.DemiBold
                     Layout.fillWidth: true
                 }
 
-                Rectangle {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    radius: Theme.radii.xs
-                    color: closeMouse.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
-                    UiIcon {
-                        anchors.centerIn: parent
-                        width: 16
-                        height: 16
-                        useQta: true
-                        name: "mdi6.close"
-                        color: root.textMuted
-                        iconSize: 16
-                    }
-                    MouseArea {
-                        id: closeMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.closeRequested()
-                    }
+                UiIconButton {
+                    dark: root.dark
+                    controlSize: 26
+                    iconSize: 14
+                    iconName: "mdi6.close"
+                    tooltip: "关闭"
+                    onClicked: root.closeRequested()
                 }
             }
         }
 
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.panelBorder }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: root.dark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.055)
+        }
 
         Flickable {
             Layout.fillWidth: true
@@ -113,50 +128,76 @@ Rectangle {
                         required property var modelData
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 56
-                        color: optionMouse.containsMouse ? Theme.token("color-bg-subtle-2", root.dark) : "transparent"
+                        Layout.preferredHeight: 48
+                        color: optionMouse.containsMouse ? root.rowHover : "transparent"
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.space["2.5"]
-                            anchors.rightMargin: Theme.space["2.5"]
-                            spacing: Theme.space["2"]
+                            anchors.leftMargin: Theme.space["3"]
+                            anchors.rightMargin: Theme.space["3"]
+                            spacing: Theme.space["2.5"]
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 1
+                                spacing: 2
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: Theme.space["1"]
-                                    Label {
-                                        text: modelData.group || ""
-                                        visible: text.length > 0
-                                        color: Theme.token("color-primary-active", root.dark)
-                                        font.pixelSize: Theme.fontSize.caption
-                                        font.bold: true
+                                    Rectangle {
+                                        Layout.preferredWidth: groupLabel.implicitWidth + 10
+                                        Layout.preferredHeight: 18
+                                        radius: 9
+                                        visible: groupLabel.text.length > 0
+                                        color: root.subtleFill
+
+                                        Label {
+                                            id: groupLabel
+                                            anchors.centerIn: parent
+                                            text: optionItem.modelData.group || ""
+                                            color: root.textSubtle
+                                            font.pixelSize: 10
+                                            font.weight: Font.Medium
+                                        }
                                     }
                                     Label {
                                         Layout.fillWidth: true
-                                        text: modelData.title
+                                        text: optionItem.modelData.title
                                         color: root.textMain
                                         font.pixelSize: Theme.fontSize.body
                                         elide: Text.ElideRight
+                                        verticalAlignment: Text.AlignVCenter
                                     }
                                 }
                                 Label {
                                     Layout.fillWidth: true
-                                    text: modelData.desc
+                                    text: optionItem.modelData.desc
                                     color: root.textSubtle
                                     font.pixelSize: Theme.fontSize.caption
                                     elide: Text.ElideRight
                                 }
                             }
 
-                            Label {
-                                text: modelData.value
-                                color: Theme.token("color-primary-active", root.dark)
-                                font.family: Theme.fontFamily.mono
-                                font.pixelSize: Theme.fontSize.caption
+                            Rectangle {
+                                Layout.preferredWidth: Math.min(128, Math.max(valueLabel.implicitWidth + 14, 72))
+                                Layout.preferredHeight: 24
+                                radius: Theme.radii.sm
+                                color: root.accentSoft
+                                border.width: 1
+                                border.color: root.accentBorder
+
+                                Label {
+                                    id: valueLabel
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.space["1.5"]
+                                    anchors.rightMargin: Theme.space["1.5"]
+                                    text: optionItem.modelData.value
+                                    color: Theme.token("color-primary-active", root.dark)
+                                    font.family: Theme.fontFamily.mono
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideMiddle
+                                }
                             }
                         }
 
@@ -165,15 +206,7 @@ Rectangle {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.insertRequested(modelData.value)
-                        }
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 1
-                            color: Theme.token("color-bg-subtle-2", root.dark)
+                            onClicked: root.insertRequested(optionItem.modelData.value)
                         }
                     }
                 }

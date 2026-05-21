@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "../../../app/ui"
 import "../../../app/theme"
 
-Popup {
+UiPopup {
     id: root
 
     property bool dark: false
@@ -20,14 +20,9 @@ Popup {
 
     width: 260
     padding: 0
-    modal: false
-    closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-
-    background: UiPopupSurface {
-        dark: root.dark
-        radius: Theme.radii.lg
-        fillColor: root.panelBg
-    }
+    surfaceRadius: Theme.radii.lg
+    surfaceFillColor: root.panelBg
+    surfaceBorderColor: root.panelBorder
 
     contentItem: Column {
         spacing: 0

@@ -14,15 +14,12 @@ from app.concurrency import PythonTaskRunner, TaskHandle
 from app.logging import get_logger, make_task_id
 
 
-DEFAULT_SAVE_ROOT = Path.home() / "Downloads" / "PyDesktopTools" / "Downloads"
-
-
 class DownloadService:
     def __init__(
         self,
         on_tasks_updated: Callable[[list[dict]], None],
         on_download_finished: Callable[[str], None],
-        save_root: Path | None = None,
+        save_root: Path,
     ) -> None:
         self._on_tasks_updated = on_tasks_updated
         self._on_download_finished = on_download_finished
@@ -32,7 +29,7 @@ class DownloadService:
         self._runner = PythonTaskRunner(thread_name_prefix="download-task")
         self._task_handles: dict[str, TaskHandle] = {}
         self._log = get_logger("features.download.service", plugin_id="download")
-        self._save_root = save_root or DEFAULT_SAVE_ROOT
+        self._save_root = save_root
 
     @property
     def save_root(self) -> Path:

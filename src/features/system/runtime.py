@@ -6,7 +6,15 @@ from .view_model import SystemSettingsViewModel
 
 
 def create_settings_runtime() -> SimpleQmlRuntime:
-    return SimpleQmlRuntime(lambda ctx: SystemSettingsViewModel(ctx.command_service, ctx.platform.permissions))
+    return SimpleQmlRuntime(
+        lambda ctx: SystemSettingsViewModel(
+            ctx.command_service,
+            ctx.platform.permissions,
+            ctx.services.storage,
+            ctx.platform,
+            getattr(ctx.services, "clipboard", None),
+        )
+    )
 
 
 def create_about_runtime() -> SimpleQmlRuntime:

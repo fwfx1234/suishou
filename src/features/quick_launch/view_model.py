@@ -24,6 +24,8 @@ class QuickLaunchViewModel(QObject):
     feedbackMessageChanged = Signal()
     popupResult = Signal("QVariantMap")
     searchQueryChanged = Signal()
+    runningChanged = Signal()
+    _backgroundRunFinished = Signal(int, str, object)
 
     def __init__(
         self,
@@ -48,6 +50,8 @@ class QuickLaunchViewModel(QObject):
         self._pending_parameters: list[dict] = []
         self._initial_mode = initial_mode
         self._feedback_message: str = ""
+        self._running_action_ids: list[int] = []
+        self._backgroundRunFinished.connect(self._on_background_run_finished)
         self._reload_actions()
         self._reload_runs()
         if initial_action_id > 0 and initial_mode == "form":
@@ -82,6 +86,10 @@ class QuickLaunchViewModel(QObject):
     @Property(str, notify=feedbackMessageChanged)
     def feedbackMessage(self) -> str:
         return self._feedback_message
+
+    @Property("QVariantList", notify=runningChanged)
+    def runningActionIds(self) -> list[int]:
+        return list(self._running_action_ids)
 
     # ----- search -----
 
@@ -125,6 +133,7 @@ class QuickLaunchViewModel(QObject):
     def deleteAction(self, action_id: int) -> bool:
         if action_id <= 0:
             return False
+        self._executor.stop(int(action_id))
         ok = self._repository.delete_action(int(action_id))
         if not ok:
             return False
@@ -137,6 +146,8 @@ class QuickLaunchViewModel(QObject):
     def setActionEnabled(self, action_id: int, enabled: bool) -> bool:
         if action_id <= 0:
             return False
+        if not enabled:
+            self._executor.stop(int(action_id))
         updated = self._repository.set_action_enabled(int(action_id), bool(enabled))
         if updated is None:
             return False
@@ -144,6 +155,21 @@ class QuickLaunchViewModel(QObject):
         self._registrar.sync_action(int(action_id))
         self._set_feedback("已启用" if enabled else "已停用")
         return True
+
+    @Slot(int, result=bool)
+    def stopAction(self, action_id: int) -> bool:
+        if action_id <= 0:
+            return False
+        stopped = self._executor.stop(int(action_id))
+        if stopped:
+            self._set_feedback("已请求停止")
+        return bool(stopped)
+
+    @Slot(int, result=bool)
+    def isActionRunning(self, action_id: int) -> bool:
+        if action_id <= 0:
+            return False
+        return self._executor.is_running(int(action_id))
 
     @Slot(int, result=bool)
     def duplicateAction(self, action_id: int) -> bool:
@@ -155,6 +181,8 @@ class QuickLaunchViewModel(QObject):
             description=existing.description,
             kind=existing.kind,
             script_type=existing.script_type,
+            script_source=existing.script_source,
+            script_body=existing.script_body,
             interpreter=existing.interpreter,
             path=existing.path,
             url=existing.url,
@@ -193,6 +221,10 @@ class QuickLaunchViewModel(QObject):
         action = self._repository.get_action(int(action_id))
         if action is None:
             return {"ok": False, "status": "error", "message": "动作不存在"}
+        if self._executor.is_running(int(action_id)):
+            message = "动作正在执行，请稍候"
+            self._set_feedback(message)
+            return {"ok": False, "status": "running", "message": message}
         params = self._executor.required_parameters(action)
         if params:
             self._open_pending(action_id)
@@ -202,36 +234,44 @@ class QuickLaunchViewModel(QObject):
                 "message": "请填写参数后再执行",
                 "parameters": [{"name": name, "value": ""} for name in params],
             }
-        result = self._executor.execute(action)
-        self._reload_runs()
-        message = result.message or ("执行成功" if result.ok else "执行失败")
+        self._executor.execute_in_background(
+            action, on_done=lambda r: self._after_background_run(action.id, action.name, r)
+        )
+        self._mark_running(action.id)
+        message = f"已开始执行 {action.name}"
         self._set_feedback(message)
-        self._maybe_emit_popup(action.id, action.name, result)
-        return {"ok": result.ok, "status": result.status, "message": message}
+        return {"ok": True, "status": "started", "message": message}
 
     @Slot(int, "QVariantMap", result="QVariantMap")
     def runWithParameters(self, action_id: int, parameters: dict) -> dict:
         action = self._repository.get_action(int(action_id))
         if action is None:
             return {"ok": False, "status": "error", "message": "动作不存在"}
+        if self._executor.is_running(int(action_id)):
+            message = "动作正在执行，请稍候"
+            self._set_feedback(message)
+            return {"ok": False, "status": "running", "message": message}
         normalized = {str(k): "" if v is None else str(v) for k, v in (parameters or {}).items()}
-        result = self._executor.execute(action, parameters=normalized)
-        self._reload_runs()
-        if result.status == "error" and result.missing_parameters:
-            message = f"缺少参数: {', '.join(result.missing_parameters)}"
+        missing = self._missing_parameters(action, normalized)
+        if missing:
+            message = f"缺少参数: {', '.join(missing)}"
             self._set_feedback(message)
             return {
                 "ok": False,
                 "status": "needsParameters",
                 "message": message,
-                "missing": list(result.missing_parameters),
+                "missing": list(missing),
             }
-        message = result.message or ("执行成功" if result.ok else "执行失败")
+        self._executor.execute_in_background(
+            action,
+            parameters=normalized,
+            on_done=lambda r: self._after_background_run(action.id, action.name, r),
+        )
+        self._mark_running(action.id)
+        self._clear_pending()
+        message = f"已开始执行 {action.name}"
         self._set_feedback(message)
-        if result.ok:
-            self._clear_pending()
-        self._maybe_emit_popup(action.id, action.name, result)
-        return {"ok": result.ok, "status": result.status, "message": message}
+        return {"ok": True, "status": "started", "message": message}
 
     @Slot()
     def clearPending(self) -> None:
@@ -276,6 +316,36 @@ class QuickLaunchViewModel(QObject):
 
     # ----- internals -----
 
+    def _missing_parameters(self, action, values: dict[str, str]) -> list[str]:
+        required = self._executor.required_parameters(action)
+        return [name for name in required if not values.get(name, "").strip()]
+
+    def _mark_running(self, action_id: int) -> None:
+        action_id = int(action_id)
+        if action_id in self._running_action_ids:
+            return
+        self._running_action_ids.append(action_id)
+        self.runningChanged.emit()
+
+    def _unmark_running(self, action_id: int) -> None:
+        action_id = int(action_id)
+        if action_id not in self._running_action_ids:
+            return
+        self._running_action_ids.remove(action_id)
+        self.runningChanged.emit()
+
+    def _after_background_run(self, action_id: int, action_name: str, result) -> None:
+        # Called from worker thread - hop back to Qt main thread via signal.
+        self._backgroundRunFinished.emit(int(action_id), str(action_name), result)
+
+    @Slot(int, str, object)
+    def _on_background_run_finished(self, action_id: int, action_name: str, result) -> None:
+        self._unmark_running(action_id)
+        self._reload_runs()
+        message = result.message or ("执行成功" if result.ok else "执行失败")
+        self._set_feedback(message)
+        self._maybe_emit_popup(action_id, action_name, result)
+
     def _maybe_emit_popup(self, action_id: int, action_name: str, result) -> None:
         if result.feedback_mode != "popup":
             return
@@ -312,6 +382,9 @@ class QuickLaunchViewModel(QObject):
         script_type = str(payload.get("scriptType") or "shell")
         if script_type not in {"shell", "node", "python", "other"}:
             script_type = "shell"
+        script_source = str(payload.get("scriptSource") or "path")
+        if script_source not in {"path", "inline"}:
+            script_source = "path"
         try:
             timeout_sec = int(payload.get("timeoutSec") or 300)
         except (TypeError, ValueError):
@@ -321,6 +394,8 @@ class QuickLaunchViewModel(QObject):
             "description": str(payload.get("description") or ""),
             "kind": kind,
             "script_type": script_type,
+            "script_source": script_source,
+            "script_body": str(payload.get("scriptBody") or ""),
             "interpreter": str(payload.get("interpreter") or ""),
             "path": str(payload.get("path") or ""),
             "url": str(payload.get("url") or ""),
@@ -357,6 +432,7 @@ class QuickLaunchViewModel(QObject):
                     item.path,
                     item.url,
                     item.args,
+                    item.script_body,
                     " ".join(item.keywords or []),
                     " ".join(item.prefixes or []),
                 ]).lower()

@@ -77,6 +77,8 @@ class QuickLaunchRuntime:
     def on_background_stop(self) -> None:
         if self._registrar is not None:
             self._registrar.unregister_all()
+        if self._executor is not None:
+            self._executor.shutdown()
         self._registrar = None
         self._executor = None
         self._repository = None
@@ -91,15 +93,25 @@ class QuickLaunchRuntime:
         if action is None:
             _log().warning("quick_launch.run.missing", "动作不存在", actionId=action_id)
             return
-        result = self._executor.execute(action)
-        if not result.ok:
-            _log().warning(
-                "quick_launch.run.failed",
-                "动作执行失败",
+        if self._executor.is_running(action_id):
+            _log().info(
+                "quick_launch.run.skipped",
+                "动作正在执行，跳过重复触发",
                 actionId=action_id,
-                status=result.status,
-                message=result.message,
             )
+            return
+
+        def _on_done(result) -> None:
+            if not result.ok:
+                _log().warning(
+                    "quick_launch.run.failed",
+                    "动作执行失败",
+                    actionId=action_id,
+                    status=result.status,
+                    message=result.message,
+                )
+
+        self._executor.execute_in_background(action, on_done=_on_done)
 
     @staticmethod
     def _coerce_int(value: object) -> int | None:

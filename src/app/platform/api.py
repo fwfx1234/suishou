@@ -19,6 +19,10 @@ class PlatformApi:
         return self._services.clipboard
 
     @property
+    def clipboard_subscriber(self) -> object:
+        return self._services.clipboard_subscriber
+
+    @property
     def dialogs(self) -> object:
         return self._services.dialogs
 
@@ -37,6 +41,14 @@ class PlatformApi:
     @property
     def permissions(self) -> object:
         return self._services.permissions
+
+    @property
+    def paths(self) -> object:
+        return self._services.paths
+
+    @property
+    def notifications(self) -> object:
+        return self._services.notifications
 
     @property
     def info(self) -> PlatformInfo:

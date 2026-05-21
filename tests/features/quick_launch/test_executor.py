@@ -118,6 +118,212 @@ def test_other_script_with_custom_interpreter(repository, platform) -> None:
     assert args == ["ruby", "-W0", "/tmp/x.rb"]
 
 
+def test_inline_shell_script_uses_dash_c(repository, platform) -> None:
+    action = repository.create_action(
+        name="A", kind="script", script_type="shell",
+        script_source="inline", script_body='echo "hi ${name}"', args="alice",
+    )
+    executor, runner, _ = _make_executor(repository, platform)
+    executor.execute(action, parameters={"name": "world"})
+    args = runner.call_args.args[0]
+    assert args == ["/bin/zsh", "-c", 'echo "hi world"', "quick-launch", "alice"]
+
+
+def test_inline_python_script_uses_dash_c(repository, platform) -> None:
+    action = repository.create_action(
+        name="A", kind="script", script_type="python",
+        script_source="inline", script_body="print(1)",
+    )
+    executor, runner, _ = _make_executor(repository, platform)
+    executor.execute(action)
+    args = runner.call_args.args[0]
+    assert args == ["python3", "-c", "print(1)"]
+
+
+def test_inline_node_script_uses_dash_e(repository, platform) -> None:
+    action = repository.create_action(
+        name="A", kind="script", script_type="node",
+        script_source="inline", script_body="console.log(1)",
+    )
+    executor, runner, _ = _make_executor(repository, platform)
+    executor.execute(action)
+    args = runner.call_args.args[0]
+    assert args == ["node", "-e", "console.log(1)"]
+
+
+def test_inline_empty_body_records_error(repository, platform) -> None:
+    action = repository.create_action(
+        name="A", kind="script", script_type="shell",
+        script_source="inline", script_body="   ",
+    )
+    executor, runner, _ = _make_executor(repository, platform)
+    result = executor.execute(action)
+    assert result.ok is False and result.status == "error"
+    runner.assert_not_called()
+
+
+def test_inline_required_parameters_extracted_from_body(repository, platform) -> None:
+    action = repository.create_action(
+        name="A", kind="script", script_type="shell",
+        script_source="inline", script_body='echo "${greeting} ${name}"',
+    )
+    executor, _, _ = _make_executor(repository, platform)
+    assert executor.required_parameters(action) == ["greeting", "name"]
+
+
+def test_execute_in_background_runs_off_calling_thread(repository, platform) -> None:
+    import threading
+    seen = {}
+
+    def fake_run(argv, *, cwd, env, timeout, capture, on_started=None):
+        seen["thread"] = threading.current_thread().name
+        return FakeCompleted(returncode=0)
+
+    executor = QuickLaunchExecutor(repository, platform, subprocess_run=fake_run)
+    action = repository.create_action(name="A", kind="script", path="/x.sh")
+    done = threading.Event()
+    executor.execute_in_background(action, on_done=lambda r: done.set())
+    assert done.wait(timeout=2.0)
+    assert seen["thread"] != threading.current_thread().name
+
+
+def test_execute_in_background_dedupes_concurrent_calls(repository, platform) -> None:
+    import threading
+    started = threading.Event()
+    release = threading.Event()
+    call_count = {"n": 0}
+
+    def fake_run(argv, *, cwd, env, timeout, capture, on_started=None):
+        call_count["n"] += 1
+        started.set()
+        release.wait(timeout=2.0)
+        return FakeCompleted(returncode=0)
+
+    executor = QuickLaunchExecutor(repository, platform, subprocess_run=fake_run)
+    action = repository.create_action(name="A", kind="script", path="/x.sh")
+    finished = threading.Event()
+    assert executor.execute_in_background(action, on_done=lambda r: finished.set()) is True
+    started.wait(timeout=2.0)
+    assert executor.is_running(action.id) is True
+    assert executor.execute_in_background(action) is False
+    release.set()
+    assert finished.wait(timeout=2.0)
+    assert call_count["n"] == 1
+    assert executor.is_running(action.id) is False
+
+
+def test_stop_terminates_running_process(repository, platform) -> None:
+    import threading
+    started = threading.Event()
+    release = threading.Event()
+    terminated = {"calls": 0}
+
+    class FakeProc:
+        def __init__(self) -> None:
+            self.returncode = -15
+
+        def terminate(self) -> None:
+            terminated["calls"] += 1
+            release.set()
+
+    fake_proc = FakeProc()
+
+    def fake_run(argv, *, cwd, env, timeout, capture, on_started=None):
+        if on_started is not None:
+            on_started(fake_proc)
+        started.set()
+        release.wait(timeout=2.0)
+        return FakeCompleted(returncode=fake_proc.returncode)
+
+    executor = QuickLaunchExecutor(repository, platform, subprocess_run=fake_run)
+    action = repository.create_action(name="A", kind="script", path="/x.sh")
+    finished = threading.Event()
+    executor.execute_in_background(action, on_done=lambda r: finished.set())
+    assert started.wait(timeout=2.0)
+    assert executor.stop(action.id) is True
+    assert finished.wait(timeout=2.0)
+    assert terminated["calls"] == 1
+    runs = repository.list_runs()
+    assert runs[0].status == "stopped"
+    assert "已手动停止" in runs[0].message
+
+
+def test_stop_on_idle_action_returns_false(repository, platform) -> None:
+    executor, _, _ = _make_executor(repository, platform)
+    action = repository.create_action(name="A", kind="script", path="/x.sh")
+    assert executor.stop(action.id) is False
+
+
+def test_real_subprocess_stop_kills_long_running_inline_script(repository, platform) -> None:
+    import threading
+
+    action = repository.create_action(
+        name="sleep", kind="script", script_type="shell",
+        script_source="inline", script_body="sleep 30", timeout_sec=60,
+        feedback_mode="silent",
+    )
+    executor = QuickLaunchExecutor(repository, platform)
+    finished = threading.Event()
+    executor.execute_in_background(action, on_done=lambda r: finished.set())
+    # Wait for proc to register
+    for _ in range(200):
+        if executor.is_running(action.id):
+            break
+        threading.Event().wait(0.01)
+    assert executor.is_running(action.id)
+    assert executor.stop(action.id) is True
+    assert finished.wait(timeout=5.0)
+    runs = repository.list_runs()
+    assert runs[0].status == "stopped"
+
+
+def test_stop_all_terminates_each_running_process(repository, platform) -> None:
+    import threading
+
+    procs: list = []
+    started_events: list = []
+    release = threading.Event()
+
+    class FakeProc:
+        def __init__(self) -> None:
+            self.returncode = 0
+            self.terminate_called = False
+
+        def terminate(self) -> None:
+            self.terminate_called = True
+            self.returncode = -15
+            release.set()
+
+    def fake_run(argv, *, cwd, env, timeout, capture, on_started=None):
+        proc = FakeProc()
+        procs.append(proc)
+        if on_started is not None:
+            on_started(proc)
+        evt = threading.Event()
+        started_events.append(evt)
+        evt.set()
+        release.wait(timeout=2.0)
+        return FakeCompleted(returncode=proc.returncode)
+
+    executor = QuickLaunchExecutor(repository, platform, subprocess_run=fake_run)
+    a = repository.create_action(name="A", kind="script", path="/a.sh")
+    b = repository.create_action(name="B", kind="script", path="/b.sh")
+    finished_a = threading.Event()
+    finished_b = threading.Event()
+    executor.execute_in_background(a, on_done=lambda r: finished_a.set())
+    executor.execute_in_background(b, on_done=lambda r: finished_b.set())
+    # Wait until both processes have registered
+    for _ in range(200):
+        if len(procs) == 2:
+            break
+        threading.Event().wait(0.01)
+    assert len(procs) == 2
+    executor.stop_all()
+    assert finished_a.wait(timeout=2.0)
+    assert finished_b.wait(timeout=2.0)
+    assert all(p.terminate_called for p in procs)
+
+
 def test_script_substitutes_parameters_into_args(repository, platform) -> None:
     action = repository.create_action(
         name="A", kind="script", script_type="shell", path="/tmp/run.sh", args="--env ${env}"
@@ -153,7 +359,7 @@ def test_script_failure_records_exit_code(repository, platform) -> None:
 def test_script_timeout_recorded(repository, platform) -> None:
     action = repository.create_action(name="A", kind="script", path="/x.sh", timeout_sec=1)
 
-    def fake_run(argv, *, cwd, env, timeout, capture):
+    def fake_run(argv, *, cwd, env, timeout, capture, on_started=None):
         raise subprocess.TimeoutExpired(argv, timeout, output="partial", stderr="")
 
     executor = QuickLaunchExecutor(repository, platform, subprocess_run=fake_run)

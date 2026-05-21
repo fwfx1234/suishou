@@ -15,12 +15,15 @@ class DownloadViewModel(QObject):
 
     def __init__(self, platform_api: object | None = None) -> None:
         super().__init__()
+        if platform_api is None:
+            raise ValueError("DownloadViewModel requires platform_api")
         self._disposed = False
         self._platform = platform_api
         self._uiCallback.connect(self._run_ui_callback)
         self._service = DownloadService(
             on_tasks_updated=self._emit_tasks_updated,
             on_download_finished=self._emit_download_finished,
+            save_root=platform_api.paths.feature_output_dir("Downloads"),
         )
 
     @Slot(result=str)

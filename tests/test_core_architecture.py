@@ -373,6 +373,10 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
             screenAt=lambda pos: target_screen if pos == QPoint(30, 40) else old_screen,
             primaryScreen=lambda: old_screen,
         )
+        coordinator._windowing = SimpleNamespace(
+            configure_overlay_window=lambda _window, *, force_top=True: True,
+            activate_window=lambda _window: True,
+        )
 
         with (
             patch("app.plugin_surface_coordinator.focused_window_point", return_value=QPoint(30, 40)),
@@ -412,11 +416,11 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         calls: list[str] = []
         coordinator._move_window_to_target_screen = lambda _window: calls.append("move")
         coordinator._configure_surface_window = lambda _window, *, force_top: calls.append(f"configure:{force_top}")
+        coordinator._windowing = SimpleNamespace(
+            activate_window=lambda _window: calls.append("native") or True,
+        )
 
-        with (
-            patch("app.plugin_surface_coordinator._activate_macos_window", side_effect=lambda _window: calls.append("native") or True),
-            patch("app.plugin_surface_coordinator.QTimer.singleShot"),
-        ):
+        with patch("app.plugin_surface_coordinator.QTimer.singleShot"):
             shown = coordinator._show_window_surface("clipboard", object())
 
         self.assertTrue(shown)
@@ -440,9 +444,11 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
         calls: list[str] = []
         coordinator._configure_surface_window = lambda _window, *, force_top: calls.append(f"configure:{force_top}")
+        coordinator._windowing = SimpleNamespace(
+            activate_window=lambda _window: calls.append("native") or True,
+        )
 
-        with patch("app.plugin_surface_coordinator._activate_macos_window", side_effect=lambda _window: calls.append("native") or True):
-            coordinator._activate_surface_window(window)
+        coordinator._activate_surface_window(window)
 
         self.assertEqual(calls, ["configure:True", "native"])
         self.assertEqual(window.calls, ["raise", "request"])
@@ -871,27 +877,21 @@ class MacHotkeyTests(unittest.TestCase):
 
 class PermissionApiTests(unittest.TestCase):
     def test_macos_accessibility_status_uses_system_api(self) -> None:
-        from app.platform.common import permissions
+        from app.platform.macos.permissions import MacOSPermissionApi
 
         fake_services = SimpleNamespace(AXIsProcessTrusted=lambda: True)
 
-        with (
-            patch.object(permissions.sys, "platform", "darwin"),
-            patch.dict(sys.modules, {"ApplicationServices": fake_services}),
-        ):
-            result = permissions.DefaultPermissionApi().accessibility_status()
+        with patch.dict(sys.modules, {"ApplicationServices": fake_services}):
+            result = MacOSPermissionApi().accessibility_status()
 
         self.assertTrue(result.ok)
         self.assertEqual(result.data["status"], "authorized")
 
     def test_open_accessibility_settings_opens_privacy_anchor(self) -> None:
-        from app.platform.common import permissions
+        from app.platform.macos.permissions import MacOSPermissionApi
 
-        with (
-            patch.object(permissions.sys, "platform", "darwin"),
-            patch("app.platform.common.permissions.subprocess.Popen") as popen,
-        ):
-            result = permissions.DefaultPermissionApi().open_accessibility_settings()
+        with patch("app.platform.macos.permissions.subprocess.Popen") as popen:
+            result = MacOSPermissionApi().open_accessibility_settings()
 
         self.assertTrue(result.ok)
         self.assertEqual(
@@ -925,6 +925,53 @@ class SystemSettingsViewModelTests(unittest.TestCase):
         self.assertEqual(vm.accessibilityStatusText, "辅助功能权限：未授权")
         self.assertTrue(vm.openAccessibilitySettings())
         self.assertTrue(permissions.opened)
+
+    def test_settings_store_changes_are_exposed_as_pending_restart(self) -> None:
+        from features.system.view_model import SystemSettingsViewModel
+
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(settings_file)}, clear=False):
+                vm = SystemSettingsViewModel()
+                self.assertFalse(vm.restartRequired)
+                self.assertTrue(vm.setSetting("logging.retentionDays", 14))
+                item = vm.settingItem("logging.retentionDays")
+                self.assertEqual(item["value"], 14)
+                self.assertEqual(item["effectiveValue"], 7)
+                self.assertTrue(item["pending"])
+                self.assertTrue(vm.restartRequired)
+                self.assertTrue(vm.resetSetting("logging.retentionDays"))
+                self.assertFalse(vm.restartRequired)
+
+    def test_clipboard_settings_delegate_to_clipboard_service(self) -> None:
+        from features.system.view_model import SystemSettingsViewModel
+
+        class Clipboard:
+            def __init__(self) -> None:
+                self.config = {
+                    "capture_text": True,
+                    "capture_image": True,
+                    "capture_files": True,
+                    "max_text_chars": 20000,
+                    "hotkey": "Alt+V",
+                }
+
+            def get_config_value(self, key: str) -> object:
+                return self.config[key]
+
+            def set_config_value(self, key: str, value: object) -> bool:
+                self.config[key] = value
+                return True
+
+        clipboard = Clipboard()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
+                vm = SystemSettingsViewModel(clipboard=clipboard)
+                self.assertTrue(vm.setSetting("clipboard.captureText", False))
+                self.assertFalse(clipboard.config["capture_text"])
+                item = vm.settingItem("clipboard.captureText")
+                self.assertFalse(item["value"])
+                self.assertFalse(item["pending"])
 
 
 class _FakeSignal:
@@ -984,6 +1031,10 @@ class HotkeyCoordinatorTests(unittest.TestCase):
             storage_factory=object(),
             dynamic_command_api_factory=object(),
             permissions=object(),
+            tray_appearance=object(),
+            windowing=object(),
+            notifications=object(),
+            clipboard_subscriber=object(),
         )
         coordinator = HotkeyCoordinator(services, object())
         manifest = PluginManifest(

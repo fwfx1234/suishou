@@ -315,8 +315,9 @@ ColumnLayout {
                         ScrollBar.vertical.policy: ScrollBar.AsNeeded
                         ScrollBar.horizontal.policy: root.detailTab === 0 ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded
 
-                        TextArea {
+                        UiTextArea {
                             id: responseTextArea
+                            dark: root.dark
                             width: root.detailTab === 0
                                 ? responseScroll.availableWidth
                                 : Math.max(responseScroll.availableWidth, contentWidth + leftPadding + rightPadding)
@@ -393,9 +394,10 @@ ColumnLayout {
                                                 font.pixelSize: Theme.fontSize.caption
                                             }
                                         }
-                                        TextArea {
+                                        UiTextArea {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: Math.max(86, implicitHeight + Theme.space["2"])
+                                            dark: root.dark
                                             text: modelData.text || ""
                                             readOnly: true
                                             wrapMode: TextEdit.NoWrap

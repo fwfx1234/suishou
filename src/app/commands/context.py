@@ -161,7 +161,11 @@ def _path_from_text(text: str) -> Path | None:
     except (OSError, ValueError):
         return None
 
-    if path.exists() or path.suffix.lower() in IMAGE_EXTENSIONS:
+    try:
+        exists = path.exists()
+    except OSError:
+        exists = False
+    if exists or path.suffix.lower() in IMAGE_EXTENSIONS:
         return path
     return None
 

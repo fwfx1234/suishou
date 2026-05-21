@@ -60,9 +60,20 @@ class RemoteBackend(Protocol):
 
 
 class SftpBackend:
-    def __init__(self, profile: RemoteProfile, *, ssh_client_factory=None) -> None:
+    def __init__(
+        self,
+        profile: RemoteProfile,
+        *,
+        ssh_client_factory=None,
+        host_key_prompt: Callable[[dict], bool] | None = None,
+        known_hosts_path: str | Path | None = None,
+    ) -> None:
         self.profile = profile
         self._ssh_client_factory = ssh_client_factory
+        self._host_key_prompt = host_key_prompt
+        self._known_hosts_path = (
+            Path(known_hosts_path) if known_hosts_path else None
+        )
         self._ssh = None
         self._jump_ssh = None
         self._transport = None
@@ -80,7 +91,11 @@ class SftpBackend:
                 username=self.profile.jump_username or self.profile.username,
             )
             self._jump_ssh = factory()
-            self._prepare_client(self._jump_ssh, paramiko)
+            self._prepare_client(
+                self._jump_ssh,
+                host=self.profile.jump_host,
+                port=self.profile.jump_port,
+            )
             self._connect_client(
                 self._jump_ssh,
                 host=self.profile.jump_host,
@@ -118,7 +133,11 @@ class SftpBackend:
             viaJump=bool(sock),
         )
         self._ssh = factory()
-        self._prepare_client(self._ssh, paramiko)
+        self._prepare_client(
+            self._ssh,
+            host=self.profile.host,
+            port=self.profile.port,
+        )
         self._connect_client(
             self._ssh,
             host=self.profile.host,
@@ -244,10 +263,21 @@ class SftpBackend:
         paramiko = _paramiko()
         return paramiko.SFTPClient.from_transport(self._transport)
 
-    @staticmethod
-    def _prepare_client(client, paramiko) -> None:
+    def _prepare_client(self, client, *, host: str, port: int) -> None:
+        paramiko = _paramiko()
         client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if self._host_key_prompt is not None:
+            policy_cls = _prompting_policy_class()
+            client.set_missing_host_key_policy(
+                policy_cls(
+                    self._host_key_prompt,
+                    host=host,
+                    port=int(port),
+                    known_hosts_path=self._known_hosts_path,
+                )
+            )
+        else:
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
 
     def _connect_client(
         self,
@@ -278,6 +308,7 @@ class SftpBackend:
             kwargs["passphrase"] = passphrase or None
         elif password:
             kwargs["password"] = password
+        kwargs["transport_factory"] = _legacy_compatible_transport
         client.connect(**kwargs)
 
 
@@ -304,28 +335,10 @@ class FtpBackend:
         import ftplib
 
         with self._lock:
-            sink = self._log_sink
-
-            class _LoggingFTP(ftplib.FTP):
-                def _print_debug(self, *args):
-                    if sink is not None:
-                        try:
-                            sink(" ".join(str(a) for a in args))
-                        except Exception:
-                            pass
-
-            class _LoggingFTPTLS(ftplib.FTP_TLS):
-                def _print_debug(self, *args):
-                    if sink is not None:
-                        try:
-                            sink(" ".join(str(a) for a in args))
-                        except Exception:
-                            pass
-
             if self.profile.protocol == "ftps":
-                factory = self._ftps_factory or _LoggingFTPTLS
+                factory = self._ftps_factory or ftplib.FTP_TLS
             else:
-                factory = self._ftp_factory or _LoggingFTP
+                factory = self._ftp_factory or ftplib.FTP
             _logger().info(
                 "remote_files.ftp.connect_start",
                 "开始连接 FTP/FTPS 服务器",
@@ -335,15 +348,25 @@ class FtpBackend:
                 username=self.profile.username,
             )
             self._ftp = factory()
-            if sink is not None and hasattr(self._ftp, "set_debuglevel"):
-                self._ftp.set_debuglevel(1)
             if self.profile.encoding:
                 self._ftp.encoding = self.profile.encoding
-            self._ftp.connect(self.profile.host, self.profile.port, timeout=self.profile.connect_timeout)
-            self._ftp.login(self.profile.username, self.profile.password)
+            self._ftp_call(
+                f"CONNECT {self.profile.host}:{self.profile.port}",
+                self._ftp.connect,
+                self.profile.host,
+                self.profile.port,
+                timeout=self.profile.connect_timeout,
+            )
+            self._ftp_call(
+                f"USER {self.profile.username}",
+                self._ftp.login,
+                self.profile.username,
+                self.profile.password,
+            )
+            self._emit_log(f"> PASV {'on' if self.profile.passive_mode else 'off'}")
             self._ftp.set_pasv(self.profile.passive_mode)
             if self.profile.protocol == "ftps" and hasattr(self._ftp, "prot_p"):
-                self._ftp.prot_p()
+                self._ftp_call("PROT P", self._ftp.prot_p)
             _logger().info(
                 "remote_files.ftp.connect_complete",
                 "FTP/FTPS 服务器连接完成",
@@ -361,7 +384,7 @@ class FtpBackend:
         if ftp is None:
             return
         try:
-            ftp.quit()
+            self._ftp_call("QUIT", ftp.quit)
         except Exception:
             try:
                 ftp.close()
@@ -372,8 +395,9 @@ class FtpBackend:
         with self._lock:
             ftp = self._require_ftp()
             try:
-                _logger().debug("remote_files.ftp.list_mlsd", "使用 MLSD 读取 FTP/FTPS 目录", protocol=self.profile.protocol, host=self.profile.host, remotePath=path)
+                self._emit_log(f"> MLSD {path}")
                 entries = list(ftp.mlsd(path))
+                self._emit_log(f"< MLSD {len(entries)} entries")
                 return sorted(
                     [self._item_from_mlsd(path, name, facts) for name, facts in entries if name not in {".", ".."}],
                     key=lambda item: (not item.is_dir, item.name.lower()),
@@ -381,27 +405,33 @@ class FtpBackend:
             except Exception as exc:
                 _logger().warning(
                     "remote_files.ftp.list_mlsd_failed",
-                    "MLSD 读取失败，切换到 NLST fallback",
+                    "MLSD 读取失败，切换到 LIST fallback",
                     protocol=self.profile.protocol,
                     host=self.profile.host,
                     remotePath=path,
                     error=str(exc),
                 )
-                names = ftp.nlst(path)
+                self._emit_log(f"< MLSD unsupported ({exc}); fallback to LIST")
+                lines: list[str] = []
+                cmd = f"LIST {path}" if path else "LIST"
+                self._emit_log(f"> {cmd}")
+                ftp.retrlines(cmd, lines.append)
+                self._emit_log(f"< LIST {len(lines)} lines")
                 items: list[RemoteFileItem] = []
-                for raw_name in names:
-                    name = str(raw_name).rstrip("/").rsplit("/", 1)[-1]
+                for line in lines:
+                    parsed = _parse_list_line(line)
+                    if parsed is None:
+                        continue
+                    name, is_dir, size, mtime = parsed
                     if name in {".", "..", ""}:
                         continue
-                    remote_path = join_remote_path(path, name)
-                    is_dir = self._is_dir(remote_path)
                     items.append(
                         RemoteFileItem(
                             name=name,
-                            path=remote_path,
+                            path=join_remote_path(path, name),
                             is_dir=is_dir,
-                            size=0 if is_dir else self._size(remote_path),
-                            modified_at=self._modified_at(remote_path),
+                            size=0 if is_dir else size,
+                            modified_at=mtime,
                         )
                     )
                 return sorted(items, key=lambda item: (not item.is_dir, item.name.lower()))
@@ -409,22 +439,22 @@ class FtpBackend:
     def mkdir(self, path: str) -> None:
         with self._lock:
             _logger().info("remote_files.ftp.mkdir", "创建 FTP/FTPS 目录", protocol=self.profile.protocol, host=self.profile.host, remotePath=path)
-            self._require_ftp().mkd(path)
+            self._ftp_call(f"MKD {path}", self._require_ftp().mkd, path)
 
     def rename(self, source: str, target: str) -> None:
         with self._lock:
             _logger().info("remote_files.ftp.rename", "重命名 FTP/FTPS 项目", protocol=self.profile.protocol, host=self.profile.host, remotePath=source, targetPath=target)
-            self._require_ftp().rename(source, target)
+            self._ftp_call(f"RNFR {source} -> {target}", self._require_ftp().rename, source, target)
 
     def delete_file(self, path: str) -> None:
         with self._lock:
             _logger().info("remote_files.ftp.delete_file", "删除 FTP/FTPS 文件", protocol=self.profile.protocol, host=self.profile.host, remotePath=path)
-            self._require_ftp().delete(path)
+            self._ftp_call(f"DELE {path}", self._require_ftp().delete, path)
 
     def delete_dir(self, path: str) -> None:
         with self._lock:
             _logger().info("remote_files.ftp.delete_dir", "删除 FTP/FTPS 目录", protocol=self.profile.protocol, host=self.profile.host, remotePath=path)
-            self._require_ftp().rmd(path)
+            self._ftp_call(f"RMD {path}", self._require_ftp().rmd, path)
 
     def upload_file(self, local_path: str, remote_path: str, progress: ProgressCallback | None = None) -> None:
         with self._lock:
@@ -439,16 +469,26 @@ class FtpBackend:
                 if progress is not None:
                     progress(sent, total)
 
+            self._emit_log(f"> STOR {remote_path}")
             with Path(local_path).open("rb") as file_obj:
-                ftp.storbinary(f"STOR {remote_path}", file_obj, blocksize=64 * 1024, callback=callback)
+                try:
+                    ftp.storbinary(f"STOR {remote_path}", file_obj, blocksize=64 * 1024, callback=callback)
+                except Exception as exc:
+                    self._emit_log(f"! STOR {remote_path}: {exc}")
+                    raise
+            self._emit_log(f"< STOR {sent} bytes")
 
     def download_file(self, remote_path: str, local_path: str, progress: ProgressCallback | None = None) -> None:
         with self._lock:
             _logger().info("remote_files.ftp.download", "下载 FTP/FTPS 文件", protocol=self.profile.protocol, host=self.profile.host, remotePath=remote_path, localPath=local_path)
             ftp = self._require_ftp()
             Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-            total = self._size(remote_path)
+            try:
+                total = int(ftp.size(remote_path) or 0)
+            except Exception:
+                total = 0
             received = 0
+            self._emit_log(f"> RETR {remote_path}")
             with Path(local_path).open("wb") as file_obj:
 
                 def callback(block: bytes) -> None:
@@ -458,7 +498,12 @@ class FtpBackend:
                     if progress is not None:
                         progress(received, total)
 
-                ftp.retrbinary(f"RETR {remote_path}", callback, blocksize=64 * 1024)
+                try:
+                    ftp.retrbinary(f"RETR {remote_path}", callback, blocksize=64 * 1024)
+                except Exception as exc:
+                    self._emit_log(f"! RETR {remote_path}: {exc}")
+                    raise
+            self._emit_log(f"< RETR {received} bytes")
 
     def open_terminal(self):
         raise RuntimeError("FTP/FTPS 不支持 SSH 终端")
@@ -466,7 +511,7 @@ class FtpBackend:
     def home_dir(self) -> str:
         with self._lock:
             try:
-                value = str(self._require_ftp().pwd() or "/")
+                value = str(self._ftp_call("PWD", self._require_ftp().pwd) or "/")
             except Exception:
                 value = "/"
             if not value.startswith("/"):
@@ -489,39 +534,41 @@ class FtpBackend:
             permissions=str(facts.get("perm") or ""),
         )
 
-    def _is_dir(self, path: str) -> bool:
-        ftp = self._require_ftp()
-        current = ""
+    def _emit_log(self, line: str) -> None:
+        sink = self._log_sink
+        if sink is not None:
+            try:
+                sink(line)
+            except Exception:
+                pass
+        _logger().debug("remote_files.ftp.io", line, protocol=self.profile.protocol, host=self.profile.host)
+
+    def _ftp_call(self, label: str, fn, *args, **kwargs):
+        self._emit_log(f"> {label}")
         try:
-            current = ftp.pwd()
-            ftp.cwd(path)
-            return True
-        except Exception:
-            return False
-        finally:
-            if current:
-                try:
-                    ftp.cwd(current)
-                except Exception:
-                    pass
-
-    def _size(self, path: str) -> int:
-        try:
-            return int(self._require_ftp().size(path) or 0)
-        except Exception:
-            return 0
-
-    def _modified_at(self, path: str) -> int:
-        try:
-            response = str(self._require_ftp().sendcmd(f"MDTM {path}") or "")
-            return _parse_ftp_modify(response.split(maxsplit=1)[1] if " " in response else response)
-        except Exception:
-            return 0
+            result = fn(*args, **kwargs)
+        except Exception as exc:
+            self._emit_log(f"! {label}: {exc}")
+            raise
+        if isinstance(result, str) and result:
+            self._emit_log(f"< {result}")
+        else:
+            self._emit_log(f"< {label} ok")
+        return result
 
 
-def create_backend(profile: RemoteProfile) -> RemoteBackend:
+def create_backend(
+    profile: RemoteProfile,
+    *,
+    host_key_prompt: Callable[[dict], bool] | None = None,
+    known_hosts_path: str | Path | None = None,
+) -> RemoteBackend:
     if profile.protocol == "sftp":
-        return SftpBackend(profile)
+        return SftpBackend(
+            profile,
+            host_key_prompt=host_key_prompt,
+            known_hosts_path=known_hosts_path,
+        )
     return FtpBackend(profile)
 
 
@@ -533,6 +580,130 @@ def _paramiko():
     import paramiko
 
     return paramiko
+
+
+_LEGACY_HOST_KEY_ALGORITHMS = ("ssh-rsa",)
+_LEGACY_PATCHED = False
+
+
+def _enable_legacy_ssh_rsa(paramiko) -> None:
+    """Restore ssh-rsa (RSA + SHA-1) support that paramiko 5 dropped.
+
+    Why: paramiko 5 removed ssh-rsa from preferred host key algorithms,
+    Transport._key_info, and RSAKey.HASHES. Older OpenSSH servers that only
+    sign with ssh-rsa surface as 'Incompatible ssh peer (no acceptable host
+    key)' or 'unknown cipher'. Re-adding the entries keeps modern servers on
+    sha2 (those names come first) while letting legacy servers negotiate.
+    """
+    global _LEGACY_PATCHED
+    if _LEGACY_PATCHED:
+        return
+    from cryptography.hazmat.primitives import hashes
+
+    rsa_key = paramiko.RSAKey
+    if "ssh-rsa" not in rsa_key.HASHES:
+        rsa_key.HASHES["ssh-rsa"] = hashes.SHA1
+    transport_cls = paramiko.Transport
+    if "ssh-rsa" not in transport_cls._key_info:
+        transport_cls._key_info["ssh-rsa"] = rsa_key
+    _LEGACY_PATCHED = True
+
+
+def _legacy_compatible_transport(sock, *, disabled_algorithms=None):
+    """Build a paramiko Transport that also accepts legacy ssh-rsa host keys."""
+    paramiko = _paramiko()
+    _enable_legacy_ssh_rsa(paramiko)
+    transport = paramiko.Transport(sock, disabled_algorithms=disabled_algorithms)
+    for attr in ("_preferred_keys", "_preferred_pubkeys"):
+        current = tuple(getattr(transport, attr, ()))
+        extras = tuple(a for a in _LEGACY_HOST_KEY_ALGORITHMS if a not in current)
+        if extras:
+            setattr(transport, attr, current + extras)
+    return transport
+
+
+_PROMPTING_POLICY_CLS = None
+
+
+def _prompting_policy_class():
+    global _PROMPTING_POLICY_CLS
+    if _PROMPTING_POLICY_CLS is not None:
+        return _PROMPTING_POLICY_CLS
+    paramiko = _paramiko()
+
+    class PromptingHostKeyPolicy(paramiko.MissingHostKeyPolicy):
+        def __init__(
+            self,
+            prompt: Callable[[dict], bool],
+            *,
+            host: str,
+            port: int,
+            known_hosts_path: Path | None = None,
+        ) -> None:
+            self._prompt = prompt
+            self._host = host
+            self._port = int(port)
+            self._known_hosts_path = (
+                Path(known_hosts_path)
+                if known_hosts_path
+                else Path.home() / ".ssh" / "known_hosts"
+            )
+
+        def missing_host_key(self, client, hostname, key) -> None:
+            info = {
+                "host": self._host,
+                "port": self._port,
+                "keyType": key.get_name(),
+                "fingerprintSha256": _format_fingerprint_sha256(key),
+                "fingerprintMd5": _format_fingerprint_md5(key),
+            }
+            accepted = False
+            try:
+                accepted = bool(self._prompt(info))
+            except Exception as exc:
+                raise _paramiko().SSHException(
+                    f"主机指纹确认失败: {exc}"
+                ) from exc
+            if not accepted:
+                raise _paramiko().SSHException("用户拒绝了主机指纹")
+            client.get_host_keys().add(hostname, key.get_name(), key)
+            _persist_host_key(self._known_hosts_path, hostname, key)
+
+    _PROMPTING_POLICY_CLS = PromptingHostKeyPolicy
+    return _PROMPTING_POLICY_CLS
+
+
+def _format_fingerprint_sha256(key) -> str:
+    import base64
+    import hashlib
+
+    digest = hashlib.sha256(key.asbytes()).digest()
+    return "SHA256:" + base64.b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def _format_fingerprint_md5(key) -> str:
+    import hashlib
+
+    digest = hashlib.md5(key.asbytes()).hexdigest()
+    return "MD5:" + ":".join(digest[i : i + 2] for i in range(0, len(digest), 2))
+
+
+def _persist_host_key(path: Path, hostname: str, key) -> None:
+    paramiko = _paramiko()
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    host_keys = paramiko.HostKeys()
+    if path.exists():
+        try:
+            host_keys.load(str(path))
+        except Exception:
+            pass
+    host_keys.add(hostname, key.get_name(), key)
+    host_keys.save(str(path))
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
 
 
 def _close_quietly(obj) -> None:
@@ -556,4 +727,69 @@ def _parse_ftp_modify(value: object) -> int:
     try:
         return int(time.mktime(time.strptime(text[:14], "%Y%m%d%H%M%S")))
     except ValueError:
+        return 0
+
+
+_LIST_MONTHS = {
+    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+    "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
+}
+
+
+def _parse_list_line(line: str) -> tuple[str, bool, int, int] | None:
+    """Parse one line of Unix-style FTP `LIST` output.
+
+    Returns (name, is_dir, size_bytes, mtime_epoch) or None for unparseable
+    lines. Format example:
+        drwxr-xr-x  2 root root 4096 May  1 12:00 dirname
+        -rw-r--r--  1 root root  123 May  1  2024 filename
+        lrwxrwxrwx  1 root root    7 May  1 12:00 link -> target
+    Symlinks are reported as files; the ' -> target' suffix is stripped.
+    """
+    text = str(line or "").rstrip()
+    if not text:
+        return None
+    parts = text.split(None, 8)
+    if len(parts) < 9:
+        return None
+    perms = parts[0]
+    if not perms or perms[0] not in {"d", "-", "l", "c", "b", "s", "p"}:
+        return None
+    is_dir = perms.startswith("d")
+    size = _safe_int(parts[4], 0)
+    month = _LIST_MONTHS.get(parts[5])
+    if month is None:
+        return None
+    day = _safe_int(parts[6], 0)
+    time_or_year = parts[7]
+    name = parts[8]
+    if perms.startswith("l"):
+        arrow = name.find(" -> ")
+        if arrow != -1:
+            name = name[:arrow]
+    mtime = _list_line_mtime(month, day, time_or_year)
+    return name, is_dir, size, mtime
+
+
+def _list_line_mtime(month: int, day: int, time_or_year: str) -> int:
+    text = str(time_or_year or "")
+    now = time.localtime()
+    try:
+        if ":" in text:
+            hour_str, minute_str = text.split(":", 1)
+            year = now.tm_year
+            struct = time.struct_time(
+                (year, month, day, int(hour_str), int(minute_str), 0, 0, 0, -1)
+            )
+            epoch = int(time.mktime(struct))
+            now_epoch = int(time.mktime(now))
+            if epoch - now_epoch > 86400:
+                struct = time.struct_time(
+                    (year - 1, month, day, int(hour_str), int(minute_str), 0, 0, 0, -1)
+                )
+                epoch = int(time.mktime(struct))
+            return epoch
+        year = int(text)
+        return int(time.mktime(time.struct_time((year, month, day, 0, 0, 0, 0, 0, -1))))
+    except (ValueError, OverflowError):
         return 0

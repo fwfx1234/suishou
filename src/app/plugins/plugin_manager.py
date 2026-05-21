@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import traceback
 from collections.abc import Iterable
 from pathlib import Path
 import sys
@@ -78,6 +79,8 @@ class PluginManager:
                 traceId=trace_id,
                 commandId=action.command_id,
                 error=str(exc),
+                errorType=type(exc).__name__,
+                traceback=traceback.format_exc(),
             )
             return None
 

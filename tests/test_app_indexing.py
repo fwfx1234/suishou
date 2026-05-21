@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import plistlib
 import sys
 import tempfile
 import unittest
 from threading import Event
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -211,6 +213,19 @@ class SystemSettingsViewModelTests(unittest.TestCase):
         self.assertTrue(service.force)
         self.assertTrue(view_model.appScanRunning)
         self.assertEqual(len(service.callbacks), 1)
+
+    def test_settings_items_include_paths_logs_and_switches(self) -> None:
+        from features.system.view_model import SystemSettingsViewModel
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
+                view_model = SystemSettingsViewModel()
+                keys = {item["key"] for item in view_model.settingsItems}
+
+        self.assertIn("logging.logDir", keys)
+        self.assertIn("developer.qmlHotReload", keys)
+        self.assertIn("logging.console", keys)
+        self.assertIn("clipboard.captureText", keys)
 
 
 class MacOSAppIndexerTests(unittest.TestCase):

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from app.logging import get_logger
 from app.storage import SQLiteDatabase
@@ -35,16 +37,20 @@ class RemoteFilesService:
         on_message,
         on_ftp_log=None,
         on_snapshot_changed=None,
+        host_key_prompt=None,
+        edit_root: str | Path | None = None,
     ) -> None:
         self._log = get_logger("features.remote_files.service", plugin_id="remote-files")
         self.profiles = RemoteProfileRepository(database)
         self.pool = RemoteConnectionPool()
         self._active_id: str = ""
+        self._edit_root = Path(edit_root) if edit_root is not None else Path(tempfile.gettempdir()) / "py_desktop_tools" / "remote_files_edits"
 
         self._on_transfers_updated = on_transfers_updated
         self._on_message = on_message
         self._on_ftp_log = on_ftp_log
         self._on_snapshot_changed = on_snapshot_changed
+        self._host_key_prompt = host_key_prompt
 
     # ------------------------- session helpers -------------------------
 
@@ -56,6 +62,23 @@ class RemoteFilesService:
 
     def _resolve_id(self, profile_id: str | None) -> str:
         return profile_id if profile_id else self._active_id
+
+    def note_message(self, profile_id: str, text: str) -> None:
+        session = self.pool.get(profile_id)
+        if session is not None:
+            session.append_message(text)
+
+    def _wrap_host_key_prompt(self, profile_id: str):
+        prompt = self._host_key_prompt
+        if prompt is None:
+            return None
+
+        def _prompt(info: dict) -> bool:
+            enriched = dict(info)
+            enriched["profileId"] = profile_id
+            return bool(prompt(enriched))
+
+        return _prompt
 
     def active_session(self) -> RemoteSession | None:
         if not self._active_id:
@@ -134,22 +157,20 @@ class RemoteFilesService:
 
     # --------------------------- connect / disconnect ------------------
 
-    def connect(self, profile_id: str) -> RemoteOperationResult:
+    def prepare_session(self, profile_id: str) -> RemoteSession:
+        """Synchronously create the session and add it to the pool.
+
+        This lets the UI show the 'connecting' snapshot immediately, before
+        any I/O. Pair with `connect()` from a worker thread.
+        """
         profile = self.profiles.get_profile(profile_id)
         if profile is None:
             self._log.warning("remote_files.connect.profile_missing", "连接配置不存在", profileId=profile_id)
             raise RuntimeError("连接配置不存在")
-        self._log.info(
-            "remote_files.connect.start",
-            "开始连接远程服务器",
-            profileId=profile.id,
-            protocol=profile.protocol,
-            host=profile.host,
-            port=profile.port,
-            authKind=profile.auth_kind,
-            jumpEnabled=profile.jump_enabled,
+        backend = create_backend(
+            profile,
+            host_key_prompt=self._wrap_host_key_prompt(profile.id),
         )
-        backend = create_backend(profile)
         session = RemoteSession(
             profile,
             backend,
@@ -161,10 +182,33 @@ class RemoteFilesService:
         if profile.protocol in {"ftp", "ftps"} and hasattr(backend, "set_log_sink"):
             backend.set_log_sink(session.append_ftp_log)
         self.pool.add(session)
+        session.update_snapshot(status="connecting", message="连接中")
+        return session
+
+    def connect(self, profile_id: str) -> RemoteOperationResult:
+        session = self.pool.get(profile_id)
+        if session is None:
+            session = self.prepare_session(profile_id)
+        profile = session.profile
+        backend = session.backend
+        self._log.info(
+            "remote_files.connect.start",
+            "开始连接远程服务器",
+            profileId=profile.id,
+            protocol=profile.protocol,
+            host=profile.host,
+            port=profile.port,
+            authKind=profile.auth_kind,
+            jumpEnabled=profile.jump_enabled,
+        )
         try:
             backend.connect()
-        except Exception:
-            self.pool.close_session(profile.id)
+        except Exception as exc:
+            session.update_snapshot(status="error", message=str(exc))
+            try:
+                backend.close()
+            except Exception:
+                pass
             raise
         self.profiles.mark_used(profile.id)
         session.update_snapshot(status="connected", message="已连接")
@@ -400,6 +444,73 @@ class RemoteFilesService:
         )
         return self.download(profile_id, remote_items, target)
 
+    def can_edit_file_item(self, item: dict) -> bool:
+        return is_editable_file_item(item)
+
+    def prepare_file_edit(self, profile_id: str | None, item: dict) -> dict:
+        target = self._resolve_id(profile_id)
+        session = self.pool.require(target)
+        data = dict(item or {})
+        if not is_editable_file_item(data):
+            raise RuntimeError("仅支持编辑远程文件")
+        remote_path = str(data.get("path") or "")
+        if not remote_path:
+            raise RuntimeError("远程文件路径为空")
+        name = str(data.get("name") or Path(remote_path).name or "remote.txt")
+        edit_id = uuid4().hex
+        edit_dir = self._edit_root / _safe_path_part(target or "active") / edit_id
+        edit_dir.mkdir(parents=True, exist_ok=True)
+        local_path = edit_dir / _safe_edit_filename(name)
+        self._log.info(
+            "remote_files.edit.prepare",
+            "准备远程文件编辑",
+            profileId=target,
+            remotePath=remote_path,
+            localPath=str(local_path),
+        )
+        session.backend.download_file(remote_path, str(local_path))
+        return {
+            "id": edit_id,
+            "profileId": target,
+            "remotePath": remote_path,
+            "remoteName": name,
+            "localPath": str(local_path),
+        }
+
+    def upload_edited_file(
+        self,
+        profile_id: str | None,
+        local_path: str,
+        remote_path: str,
+        refresh_remote_path: str | None = "",
+    ) -> RemoteOperationResult:
+        target = self._resolve_id(profile_id)
+        session = self.pool.require(target)
+        local = Path(local_path)
+        if not local.is_file():
+            raise RuntimeError("编辑临时文件不存在")
+        size = local.stat().st_size
+        remote = str(remote_path or "")
+        if not remote:
+            raise RuntimeError("远程文件路径为空")
+        self._log.info(
+            "remote_files.edit.upload",
+            "同步远程文件编辑",
+            profileId=target,
+            remotePath=remote,
+            localPath=str(local),
+            size=size,
+        )
+        session.backend.upload_file(str(local), remote)
+        if refresh_remote_path is None:
+            return RemoteOperationResult(message="编辑内容已上传")
+        refreshed_path = refresh_remote_path or parent_remote_path(remote)
+        remote_items = self.list_remote(target, refreshed_path) if refreshed_path else None
+        if remote_items is not None:
+            session.remote_path = refreshed_path
+            session.remote_items = remote_items
+        return RemoteOperationResult(remote_items=remote_items, remote_path=refreshed_path)
+
     def cancel_transfer(self, profile_id: str | None, transfer_id: str) -> None:
         target = self._resolve_id(profile_id)
         session = self.pool.get(target)
@@ -438,9 +549,18 @@ class RemoteFilesService:
             if not path or path == "/":
                 continue
             if bool(item.get("isDir")):
-                session.backend.delete_dir(path)
+                self._delete_remote_dir_recursive(session.backend, path)
             else:
                 session.backend.delete_file(path)
+
+    def _delete_remote_dir_recursive(self, backend, path: str) -> None:
+        children = [item for item in backend.list_dir(path) if item.name not in {".", ".."}]
+        for child in children:
+            if child.is_dir:
+                self._delete_remote_dir_recursive(backend, child.path)
+            else:
+                backend.delete_file(child.path)
+        backend.delete_dir(path)
 
     # --------------------------- terminal ------------------------------
 
@@ -462,3 +582,22 @@ class RemoteFilesService:
     def close(self) -> None:
         self.pool.close_all()
         self._active_id = ""
+
+
+def is_editable_file_item(item: dict) -> bool:
+    data = dict(item or {})
+    if bool(data.get("isDir")):
+        return False
+    name = str(data.get("name") or Path(str(data.get("path") or "")).name or "").strip()
+    if not name or name == "..":
+        return False
+    return bool(str(data.get("path") or ""))
+
+
+def _safe_path_part(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in str(value or "")) or "default"
+
+
+def _safe_edit_filename(value: str) -> str:
+    cleaned = str(value or "remote.txt").replace("/", "_").replace("\\", "_").replace(":", "_").strip()
+    return cleaned or "remote.txt"

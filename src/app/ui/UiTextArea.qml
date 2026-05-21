@@ -1,39 +1,149 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
 
-TextArea {
+FocusScope {
     id: control
 
     property bool dark: false
+    property bool hoverEnabled: true
+    property string placeholderText: ""
+    property color placeholderTextColor: Theme.token("color-text-secondary", dark)
+    property Item background: defaultBackground
 
-    hoverEnabled: true
-    color: Theme.token("color-text-primary", dark)
-    placeholderTextColor: Theme.token("color-text-secondary", dark)
-    selectedTextColor: Theme.token("color-text-primary", dark)
-    selectionColor: Theme.token("color-primary-active", dark)
-    font.pixelSize: Theme.fontSize.body
-    font.family: Theme.fontFamily.mono
-    leftPadding: Theme.space["2.5"]
-    rightPadding: Theme.space["2.5"]
-    topPadding: Theme.space["2.5"]
-    bottomPadding: Theme.space["2.5"]
+    property alias text: editor.text
+    property alias length: editor.length
+    property alias contentWidth: editor.contentWidth
+    property alias contentHeight: editor.contentHeight
+    property alias paintedWidth: editor.paintedWidth
+    property alias paintedHeight: editor.paintedHeight
+    property alias color: editor.color
+    property alias selectedTextColor: editor.selectedTextColor
+    property alias selectionColor: editor.selectionColor
+    property alias font: editor.font
+    property alias horizontalAlignment: editor.horizontalAlignment
+    property alias verticalAlignment: editor.verticalAlignment
+    property alias wrapMode: editor.wrapMode
+    property alias lineCount: editor.lineCount
+    property alias textFormat: editor.textFormat
+    property alias readOnly: editor.readOnly
+    property alias cursorVisible: editor.cursorVisible
+    property alias cursorPosition: editor.cursorPosition
+    property alias cursorRectangle: editor.cursorRectangle
+    property alias selectionStart: editor.selectionStart
+    property alias selectionEnd: editor.selectionEnd
+    property alias selectedText: editor.selectedText
+    property alias activeFocusOnPress: editor.activeFocusOnPress
+    property alias persistentSelection: editor.persistentSelection
+    property alias textMargin: editor.textMargin
+    property alias inputMethodHints: editor.inputMethodHints
+    property alias selectByKeyboard: editor.selectByKeyboard
+    property alias selectByMouse: editor.selectByMouse
+    property alias mouseSelectionMode: editor.mouseSelectionMode
+    property alias canPaste: editor.canPaste
+    property alias canUndo: editor.canUndo
+    property alias canRedo: editor.canRedo
+    property alias baseUrl: editor.baseUrl
+    property alias renderType: editor.renderType
+    property alias textDocument: editor.textDocument
+    property alias padding: editor.padding
+    property alias leftPadding: editor.leftPadding
+    property alias rightPadding: editor.rightPadding
+    property alias topPadding: editor.topPadding
+    property alias bottomPadding: editor.bottomPadding
+    property alias tabStopDistance: editor.tabStopDistance
+    property alias preeditText: editor.preeditText
 
-    background: Rectangle {
+    readonly property bool hovered: hoverProbe.hovered
+
+    implicitHeight: 84
+    implicitWidth: 240
+    clip: true
+
+    signal editingFinished()
+    signal textEdited()
+
+    onBackgroundChanged: syncBackground()
+    Component.onCompleted: syncBackground()
+    onActiveFocusChanged: {
+        if (activeFocus && !editor.activeFocus)
+            editor.forceActiveFocus()
+    }
+
+    function syncBackground() {
+        if (!control.background)
+            return
+        control.background.parent = control
+        control.background.z = -2
+        control.background.anchors.fill = control
+    }
+
+    Rectangle {
+        id: defaultBackground
+        visible: control.background === defaultBackground
+        z: -2
+        anchors.fill: parent
         radius: Theme.radii.md
         color: control.dark ? Theme.token("color-nav-icon-idle-bg", true) : Theme.token("color-bg-surface", false)
         border.width: control.activeFocus ? 2 : (control.hovered ? 1 : 0)
         border.color: control.activeFocus
             ? Theme.token("color-primary-active", control.dark)
             : (control.hovered ? Theme.token("color-border-default", control.dark) : "transparent")
+        antialiasing: true
     }
 
-    TapHandler {
+    TextEdit {
+        id: editor
+        anchors.fill: parent
+        focus: true
+        enabled: control.enabled
+        Keys.forwardTo: [control]
+        selectByMouse: true
+        persistentSelection: true
+        color: Theme.token("color-text-primary", control.dark)
+        selectedTextColor: "#FFFFFF"
+        selectionColor: Theme.token("color-primary-active", control.dark)
+        font.pixelSize: Theme.fontSize.body
+        font.family: Theme.fontFamily.mono
+        leftPadding: Theme.space["2.5"]
+        rightPadding: Theme.space["2.5"]
+        topPadding: Theme.space["2.5"]
+        bottomPadding: Theme.space["2.5"]
+        wrapMode: TextEdit.Wrap
+        clip: true
+        onEditingFinished: control.editingFinished()
+        onTextEdited: control.textEdited()
+    }
+
+    Text {
+        z: 1
+        visible: control.text.length === 0 && control.placeholderText.length > 0 && control.preeditText.length === 0
+        anchors.left: parent.left
+        anchors.leftMargin: control.leftPadding
+        anchors.right: parent.right
+        anchors.rightMargin: control.rightPadding
+        anchors.top: parent.top
+        anchors.topMargin: control.topPadding
+        text: control.placeholderText
+        color: control.placeholderTextColor
+        font: control.font
+        elide: Text.ElideRight
+        renderType: Text.NativeRendering
+    }
+
+    HoverHandler {
+        id: hoverProbe
+        enabled: control.hoverEnabled
+    }
+
+    MouseArea {
+        anchors.fill: parent
         acceptedButtons: Qt.RightButton
-        gesturePolicy: TapHandler.ReleaseWithinBounds
-        onTapped: function(eventPoint) {
-            control.forceActiveFocus()
-            uiTextEditMenu.openAt(control, eventPoint.position.x, eventPoint.position.y)
+        onPressed: function(mouse) {
+            editor.forceActiveFocus()
+            if ((control.selectedText || "").length === 0)
+                control.cursorPosition = control.positionAt(mouse.x, mouse.y)
+            uiTextEditMenu.openAt(control, mouse.x, mouse.y)
+            mouse.accepted = true
         }
     }
 
@@ -42,4 +152,29 @@ TextArea {
         target: control
         dark: control.dark
     }
+
+    function selectAll() { editor.selectAll() }
+    function selectWord() { editor.selectWord() }
+    function select(start, end) { editor.select(start, end) }
+    function deselect() { editor.deselect() }
+    function cut() { editor.cut() }
+    function copy() { editor.copy() }
+    function paste() { editor.paste() }
+    function undo() { editor.undo() }
+    function redo() { editor.redo() }
+    function insert(position, value) { editor.insert(position, value) }
+    function remove(start, end) { editor.remove(start, end) }
+    function append(value) { editor.append(value) }
+    function clear() { editor.clear() }
+    function positionAt(x, y) { return editor.positionAt(x, y) }
+    function positionToRectangle(pos) { return editor.positionToRectangle(pos) }
+    function moveCursorSelection(pos, mode) {
+        if (mode !== undefined)
+            editor.moveCursorSelection(pos, mode)
+        else
+            editor.moveCursorSelection(pos)
+    }
+    function getText(start, end) { return editor.getText(start, end) }
+    function getFormattedText(start, end) { return editor.getFormattedText(start, end) }
+    function linkAt(x, y) { return editor.linkAt(x, y) }
 }

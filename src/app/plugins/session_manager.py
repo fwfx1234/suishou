@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -8,6 +7,7 @@ from PySide6.QtCore import QObject, QTimer
 from PySide6.QtQml import QQmlContext
 
 from app.logging import get_logger, make_session_id
+from app.settings import configured_int
 from app.plugins.launch_request import PluginLaunchRequest
 from app.plugins.manifest import LaunchMode, PluginManifest
 from app.plugins.plugin_manager import PluginManager
@@ -35,13 +35,7 @@ RetentionExpiredCallback = Callable[[str, SessionState], None]
 def _retention_interval_ms() -> int:
     """Read the retention interval from env for debugging, otherwise use 5 minutes."""
 
-    raw = os.getenv("PY_DESKTOP_PLUGIN_RETENTION_MS", "").strip()
-    if not raw:
-        return 300_000
-    try:
-        value = int(raw)
-    except ValueError:
-        return 300_000
+    value = configured_int("plugins.retentionMs", "PY_DESKTOP_PLUGIN_RETENTION_MS", 300_000)
     return max(1_000, value)
 
 

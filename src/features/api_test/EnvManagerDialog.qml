@@ -707,7 +707,9 @@ Dialog {
                                                         onToggled: dialog.updateRow(kind, index, "enabled", checked)
                                                     }
 
-                                                    TextField {
+                                                    UiTextField {
+                                                        id: keyInput
+                                                        dark: dialog.dark
                                                         Layout.preferredWidth: 190
                                                         Layout.preferredHeight: 30
                                                         text: modelData.key || ""
@@ -716,14 +718,12 @@ Dialog {
                                                         placeholderTextColor: dialog.textSubtle
                                                         font.family: Theme.fontFamily.mono
                                                         font.pixelSize: Theme.fontSize.mono
-                                                        selectByMouse: true
                                                         background: Rectangle {
                                                             radius: Theme.radii.xs
                                                             color: keyInput.activeFocus ? dialog.surface : "transparent"
                                                             border.width: keyInput.activeFocus ? 1 : 0
                                                             border.color: Theme.token("color-primary-active", dialog.dark)
                                                         }
-                                                        id: keyInput
                                                         onEditingFinished: dialog.updateRow(kind, index, "key", text.trim())
                                                         onActiveFocusChanged: {
                                                             if (activeFocus)
@@ -733,8 +733,9 @@ Dialog {
                                                         }
                                                     }
 
-                                                    TextField {
+                                                    UiTextField {
                                                         id: valueInput
+                                                        dark: dialog.dark
                                                         Layout.fillWidth: true
                                                         Layout.preferredHeight: 30
                                                         text: modelData.value || ""
@@ -743,7 +744,6 @@ Dialog {
                                                         placeholderTextColor: dialog.textSubtle
                                                         font.family: Theme.fontFamily.mono
                                                         font.pixelSize: Theme.fontSize.mono
-                                                        selectByMouse: true
                                                         background: Rectangle {
                                                             radius: Theme.radii.xs
                                                             color: valueInput.activeFocus ? dialog.surface : "transparent"

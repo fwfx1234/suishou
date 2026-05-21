@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from time import perf_counter
 from pathlib import Path
@@ -15,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 
 from .app_runtime import ApplicationRuntime
 from .logging import get_logger, init_logging, install_qt_message_handler
+from .settings import configured_bool, configured_int, configured_text
 from .version import get_app_version
 
 
@@ -52,15 +52,8 @@ def _configure_fonts(qt_app: QApplication) -> None:
     qt_app.setFont(app_font)
 
 
-def _env_flag(name: str) -> bool | None:
-    value = os.getenv(name)
-    if value is None:
-        return None
-    return value.strip().lower() not in {"0", "false", "no", "off"}
-
-
 def _console_logging_enabled() -> bool:
-    configured = _env_flag("PY_DESKTOP_TOOLS_LOG_CONSOLE")
+    configured = configured_bool("logging.console", "PY_DESKTOP_TOOLS_LOG_CONSOLE", None)
     if configured is not None:
         return configured
     return not bool(getattr(sys, "frozen", False))
@@ -73,9 +66,9 @@ def main() -> int:
     logging_manager = init_logging(
         app_name="py-desktop-tools",
         app_version=get_app_version(),
-        level=os.getenv("PY_DESKTOP_TOOLS_LOG_LEVEL", "WARNING"),
+        level=configured_text("logging.consoleLevel", "PY_DESKTOP_TOOLS_LOG_LEVEL", "WARNING"),
         console=console_logging,
-        retention_days=int(os.getenv("PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS", "7") or 7),
+        retention_days=configured_int("logging.retentionDays", "PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS", 7),
     )
     logging_elapsed_ms = int((perf_counter() - logging_started_at) * 1000)
     log = get_logger("app.main")

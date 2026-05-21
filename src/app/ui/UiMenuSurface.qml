@@ -1,23 +1,22 @@
 import QtQuick
 import QtQuick.Effects
-import "../theme"
 
 Item {
     id: root
 
     property bool dark: false
-    property int radius: 8
-    property color fillColor: root.dark ? "#1F2330" : "#FFFFFF"
+    property int radius: 10
+    property color fillColor: root.dark ? Qt.rgba(0.12, 0.13, 0.16, 0.96) : Qt.rgba(1, 1, 1, 0.98)
     property color borderColor: root.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.08)
 
     MultiEffect {
         anchors.fill: surface
         source: surface
         shadowEnabled: true
-        shadowBlur: 0.9
-        shadowOpacity: 0.18
+        shadowBlur: 0.75
+        shadowOpacity: root.dark ? 0.30 : 0.16
         shadowHorizontalOffset: 0
-        shadowVerticalOffset: 6
+        shadowVerticalOffset: 8
         shadowColor: "#000000"
     }
 

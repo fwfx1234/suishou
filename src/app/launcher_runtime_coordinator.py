@@ -492,26 +492,20 @@ class LauncherRuntimeCoordinator:
     def _configure_launcher_window_for_macos(self, *, force: bool = False) -> None:
         if self._launcher_window_macos_configured and not force:
             return
-        if not self._is_macos():
-            return
         if self._launcher_window is None or not is_qobject_alive(self._launcher_window):
             return
         try:
-            from app.platform.macos.windowing import configure_launcher_window
-
-            self._launcher_window_macos_configured = configure_launcher_window(self._launcher_window)
+            self._launcher_window_macos_configured = self._platform_services.windowing.configure_launcher_window(
+                self._launcher_window
+            )
         except Exception as exc:
-            self._log.debug("launcher.macos_window_config_failed", "macOS 启动器窗口配置失败", error=str(exc))
+            self._log.debug("launcher.window_config_failed", "启动器窗口配置失败", error=str(exc))
 
     def _activate_launcher_window_native(self) -> None:
-        if not self._is_macos():
-            return
         try:
-            from app.platform.macos.windowing import activate_window
-
-            activate_window(self._launcher_window)
+            self._platform_services.windowing.activate_window(self._launcher_window)
         except Exception as exc:
-            self._log.debug("launcher.macos_activate_failed", "macOS 启动器窗口原生激活失败", error=str(exc))
+            self._log.debug("launcher.activate_failed", "启动器窗口原生激活失败", error=str(exc))
 
     def _is_macos(self) -> bool:
         return getattr(self._platform_services.info, "name", "") == "macos"

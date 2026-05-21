@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
 
 Rectangle {
@@ -18,7 +17,7 @@ Rectangle {
 
     signal triggered()
 
-    readonly property color macAccent: "#0A84FF"
+    readonly property color macAccent: Theme.token("color-primary-active", root.dark)
     readonly property bool onAccent: (mouse.containsMouse && root.itemEnabled) || root.highlighted
     readonly property color textNormal: root.destructive
         ? Theme.token("color-danger", root.dark)
@@ -30,8 +29,8 @@ Rectangle {
     readonly property color resolvedText: root.onAccent ? root.textOnAccent : root.textNormal
     readonly property color resolvedMuted: root.onAccent ? root.textOnAccent : root.textMuted
 
-    implicitHeight: 28
-    radius: 4
+    implicitHeight: 26
+    radius: 5
     color: root.onAccent ? root.macAccent : "transparent"
     opacity: root.itemEnabled ? 1.0 : 0.4
     antialiasing: true
@@ -41,13 +40,13 @@ Rectangle {
         width: (root.checked || root.reserveCheckSpace) ? 16 : 0
         height: parent.height
         anchors.left: parent.left
-        anchors.leftMargin: width > 0 ? 6 : 0
+        anchors.leftMargin: width > 0 ? 5 : 0
 
         Text {
             anchors.centerIn: parent
             visible: root.checked
             text: "✓"
-            font.pixelSize: 12
+            font.pixelSize: 11
             font.family: Theme.fontFamily.ui
             color: root.resolvedText
         }
@@ -56,11 +55,11 @@ Rectangle {
     UiIcon {
         id: iconSlot
         visible: root.leftIcon.length > 0
-        width: visible ? 14 : 0
-        height: 14
-        iconSize: 14
+        width: visible ? 13 : 0
+        height: 13
+        iconSize: 13
         anchors.left: checkSlot.right
-        anchors.leftMargin: visible ? 6 : 0
+        anchors.leftMargin: visible ? 5 : 0
         anchors.verticalCenter: parent.verticalCenter
         name: root.leftIcon
         color: root.resolvedText
@@ -70,10 +69,10 @@ Rectangle {
         id: shortcutLabel
         visible: root.shortcutText.length > 0
         anchors.right: parent.right
-        anchors.rightMargin: 10
+        anchors.rightMargin: 9
         anchors.verticalCenter: parent.verticalCenter
         text: root.shortcutText
-        font.pixelSize: 12
+        font.pixelSize: 11
         font.family: Theme.fontFamily.ui
         color: root.resolvedMuted
     }
@@ -81,12 +80,12 @@ Rectangle {
     Text {
         id: titleLabel
         anchors.left: iconSlot.visible ? iconSlot.right : (checkSlot.width > 0 ? checkSlot.right : parent.left)
-        anchors.leftMargin: iconSlot.visible ? 6 : (checkSlot.width > 0 ? 6 : 10)
+        anchors.leftMargin: iconSlot.visible ? 6 : (checkSlot.width > 0 ? 6 : 9)
         anchors.right: shortcutLabel.visible ? shortcutLabel.left : parent.right
-        anchors.rightMargin: shortcutLabel.visible ? 10 : 10
+        anchors.rightMargin: shortcutLabel.visible ? 9 : 9
         anchors.verticalCenter: parent.verticalCenter
         text: root.text
-        font.pixelSize: 14
+        font.pixelSize: 13
         font.family: Theme.fontFamily.ui
         color: root.resolvedText
         elide: Text.ElideRight
@@ -97,7 +96,7 @@ Rectangle {
         + (iconSlot.visible ? iconSlot.width + 6 : 0)
         + (checkSlot.width > 0 ? checkSlot.width + 6 : 0)
         + (shortcutLabel.visible ? shortcutLabel.implicitWidth + 12 : 0)
-        + 20
+        + 18
 
     MouseArea {
         id: mouse

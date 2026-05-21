@@ -12,11 +12,12 @@ class TrayCoordinator:
         self,
         *,
         parent: QObject,
+        platform_services: object,
         on_show_window: Callable[[], None],
         on_restart: Callable[[], None],
         on_quit: Callable[[], None],
     ) -> None:
-        self._manager = SystemTrayManager(parent=parent)
+        self._manager = SystemTrayManager(platform_services=platform_services, parent=parent)
         self._manager.showWindowRequested.connect(on_show_window)
         self._manager.restartRequested.connect(on_restart)
         self._manager.quitRequested.connect(on_quit)

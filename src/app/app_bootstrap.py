@@ -133,6 +133,7 @@ class ApplicationBootstrapper:
             launcher_bridge=launcher_bridge,
             launcher_window=launcher_window,
             on_retained_close=on_retained_close,
+            windowing=platform_services.windowing,
         )
         runtime_coordinator = LauncherRuntimeCoordinator(
             qt_app=self._qt_app,
@@ -149,6 +150,7 @@ class ApplicationBootstrapper:
         coordinator_ref["coordinator"] = runtime_coordinator
         tray_coordinator = TrayCoordinator(
             parent=self._qt_app,
+            platform_services=platform_services,
             on_show_window=runtime_coordinator.toggle_launcher,
             on_restart=runtime_coordinator.restart_app,
             on_quit=self._qt_app.quit,

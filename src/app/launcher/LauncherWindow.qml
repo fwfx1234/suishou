@@ -414,10 +414,11 @@ Window {
                         anchors.rightMargin: launcher.isMacos ? 14 : 12
                         spacing: 10
 
-                        TextField {
+                        UiTextField {
                             id: searchInput
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            dark: launcher.dark
                             placeholderText: "搜索功能或打开应用..."
                             font.pixelSize: 16
                             font.family: Theme.fontFamily.ui
@@ -519,65 +520,26 @@ Window {
                             }
                         }
 
-                        Button {
+                        UiIconButton {
                             id: settingsButton
                             visible: !mixedMode
                             Layout.preferredWidth: 34
                             Layout.preferredHeight: 34
-                            padding: 0
-                            hoverEnabled: true
-
-                            ToolTip.visible: hovered
-                            ToolTip.delay: 250
-                            ToolTip.text: "设置"
-
-                            background: Rectangle {
-                                radius: 7
-                                color: settingsButton.down ? Theme.token("color-border-default", launcher.dark) : (settingsButton.hovered ? Theme.token("color-bg-subtle", launcher.dark) : "transparent")
-                            }
-
-                            contentItem: Item {
-                                UiIcon {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    name: "mdi6.cog-outline"
-                                    color: Theme.token("color-text-regular", launcher.dark)
-                                    iconSize: 18
-                                }
-                            }
-
+                            dark: launcher.dark
+                            iconName: "mdi6.cog-outline"
+                            iconSize: 18
+                            tooltip: "设置"
                             onClicked: launcher.openSettings()
                         }
 
-                        Button {
+                        UiIconButton {
                             id: detachButton
                             visible: mixedMode && mixedPluginMode === "inline_view"
                             Layout.preferredWidth: 34
                             Layout.preferredHeight: 34
-                            padding: 0
-                            hoverEnabled: true
-
-                            ToolTip.visible: hovered
-                            ToolTip.delay: 250
-                            ToolTip.text: "在独立窗口打开"
-
-                            background: Rectangle {
-                                radius: 6
-                                color: detachButton.down ? Theme.token("color-border-default", launcher.dark) : (detachButton.hovered ? Theme.token("color-bg-subtle-2", launcher.dark) : "transparent")
-                            }
-
-                            contentItem: Item {
-                                UiIcon {
-                                    anchors.centerIn: parent
-                                    width: 16
-                                    height: 16
-                                    name: "mdi6.open-in-new"
-                                    color: Theme.token("color-text-regular", launcher.dark)
-                                    iconSize: 16
-                                }
-                            }
-
+                            dark: launcher.dark
+                            iconName: "mdi6.open-in-new"
+                            tooltip: "在独立窗口打开"
                             onClicked: {
                                 if (hasBridge && mixedPluginId.length > 0) {
                                     launcherBridge.detachPluginToWindow(mixedPluginId);
@@ -781,38 +743,21 @@ Window {
                                 Repeater {
                                     model: pluginRow.rowData.actions || []
 
-                                    delegate: Button {
+                                    delegate: UiIconButton {
                                         id: actionButton
                                         Layout.preferredWidth: 30
                                         Layout.preferredHeight: 30
-                                        padding: 0
                                         enabled: modelData.enabled !== false
-                                        hoverEnabled: true
 
                                         readonly property string actionIcon: modelData.icon || "qta:mdi6.dots-horizontal"
                                         readonly property bool actionUseQta: actionIcon.indexOf("qta:") === 0
                                         readonly property string actionQtaName: actionUseQta ? actionIcon.slice(4) : actionIcon
-                                        readonly property bool danger: !!modelData.danger
 
-                                        ToolTip.visible: hovered
-                                        ToolTip.delay: 300
-                                        ToolTip.text: modelData.label || modelData.id || ""
-
-                                        background: Rectangle {
-                                            radius: 6
-                                            color: actionButton.down ? Theme.token(actionButton.danger ? "color-danger" : "color-border-default", launcher.dark) + "33" : (actionButton.hovered ? Theme.token(actionButton.danger ? "color-danger" : "color-bg-subtle", launcher.dark) + "22" : "transparent")
-                                        }
-
-                                        contentItem: Item {
-                                            UiIcon {
-                                                anchors.centerIn: parent
-                                                width: 16
-                                                height: 16
-                                                name: actionButton.actionQtaName
-                                                color: actionButton.danger ? Theme.token("color-danger", launcher.dark) : Theme.token("color-text-regular", launcher.dark)
-                                                iconSize: 16
-                                            }
-                                        }
+                                        dark: launcher.dark
+                                        iconName: actionQtaName
+                                        useQtaIcon: true
+                                        danger: !!modelData.danger
+                                        tooltip: modelData.label || modelData.id || ""
 
                                         onClicked: {
                                             launcherBridge.activatePluginListItemAction(launcher.mixedPluginId, pluginRow.rowId, String(modelData.id || ""));

@@ -9,7 +9,7 @@ Rectangle {
 
     property bool dark: false
     property color panelBg: Theme.token("color-bg-surface", dark)
-    property color panelBorder: Theme.token("color-bg-subtle-2", dark)
+    property color panelBorder: Theme.token("color-border-default", dark)
     property color textMain: Theme.token("color-text-primary", dark)
     property color textMuted: Theme.token("color-text-regular", dark)
     property bool opened: magicPopup.opened
@@ -24,10 +24,16 @@ Rectangle {
     Layout.preferredHeight: 28
     implicitWidth: 28
     implicitHeight: 28
-    radius: Theme.radii.xs
-    color: magicPopup.opened || hit.containsMouse ? Theme.token("color-bg-subtle", root.dark) : "transparent"
+    radius: Theme.radii.md
+    color: {
+        if (magicPopup.opened)
+            return root.dark ? Theme.token("color-primary-soft", true) : Theme.token("color-primary-bg", false)
+        if (hit.containsMouse || hit.pressed)
+            return Theme.token("color-bg-subtle-2", root.dark)
+        return "transparent"
+    }
     border.width: magicPopup.opened ? 1 : 0
-    border.color: Theme.token("color-primary-active", root.dark)
+    border.color: root.dark ? Qt.rgba(0.04, 0.52, 1, 0.45) : Qt.rgba(0.04, 0.52, 1, 0.24)
 
     UiIcon {
         anchors.centerIn: parent
@@ -35,7 +41,7 @@ Rectangle {
         height: 16
         useQta: true
         name: "mdi6.code-json"
-        color: magicPopup.opened ? Theme.token("color-primary-active", root.dark) : root.textMuted
+        color: magicPopup.opened ? Theme.token("color-primary-active", root.dark) : Theme.token("color-text-secondary", root.dark)
         iconSize: 16
     }
 
@@ -51,22 +57,22 @@ Rectangle {
     ToolTip.text: "插入变量 / 魔法参数"
     ToolTip.delay: 300
 
-    Popup {
+    UiPopup {
         id: magicPopup
+        parent: root
         x: root.width - width
-        y: root.height + 4
-        width: 320
-        height: 420
+        y: root.height + 6
+        width: 352
+        height: 386
         padding: 0
-        modal: false
         z: 100
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-
-        background: Rectangle { color: "transparent" }
+        surfaceRadius: 12
+        surfaceFillColor: root.dark ? Qt.rgba(0.11, 0.12, 0.15, 0.98) : Qt.rgba(1, 1, 1, 0.98)
+        surfaceBorderColor: root.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.08)
 
         contentItem: ApiMagicValuePanel {
             dark: root.dark
-            panelBg: root.panelBg
+            panelBg: root.dark ? Theme.token("color-bg-elevated", true) : "#FFFFFF"
             panelBorder: root.panelBorder
             textMain: root.textMain
             textMuted: root.textMuted

@@ -15,6 +15,8 @@ Item {
     property var editingProfile: ({})
     property var contextItem: null
     property var contextProfile: null
+    property var pendingEditedFile: ({})
+    property string lastToastMessage: ""
     readonly property bool dark: app.theme === "dark"
     readonly property bool connected: (remoteFilesVm.connectionState.status || "") === "connected"
     readonly property bool connecting: (remoteFilesVm.connectionState.status || "") === "connecting"
@@ -117,6 +119,36 @@ Item {
         return profile
     }
 
+    function resetProfileDialogFields() {
+        var p = editingProfile || {}
+        var defaultPort = (p.protocol || "sftp") === "sftp" ? 22 : 21
+        nameField.text = p.name || ""
+        protocolBox.currentIndex = (p.protocol || "sftp") === "ftp"
+            ? 1
+            : (p.protocol || "sftp") === "ftps" ? 2 : 0
+        hostField.text = p.host || ""
+        portField.text = String(p.port || defaultPort)
+        usernameField.text = p.username || ""
+        passwordField.text = p.password || ""
+        authBox.currentIndex = (p.authKind || "password") === "private_key"
+            ? 1
+            : (p.authKind || "password") === "agent" ? 2 : 0
+        keyPathField.text = p.privateKeyPath || ""
+        keyPassField.text = p.privateKeyPassphrase || ""
+        remoteRootField.text = p.remoteRoot || ""
+        localRootField.text = p.localRoot || ""
+        encodingField.text = p.encoding || "utf-8"
+        timeoutField.text = String(p.connectTimeout || 15)
+        passiveSwitch.checked = p.passiveMode !== false
+        jumpSwitch.checked = p.jumpEnabled || false
+        jumpHostField.text = p.jumpHost || ""
+        jumpPortField.text = String(p.jumpPort || 22)
+        jumpUserField.text = p.jumpUsername || ""
+        jumpPasswordField.text = p.jumpPassword || ""
+        jumpKeyField.text = p.jumpPrivateKeyPath || ""
+        jumpKeyPassField.text = p.jumpPrivateKeyPassphrase || ""
+    }
+
     function profileSubtitle(profile) {
         if (!profile)
             return "未选择"
@@ -177,6 +209,26 @@ Item {
         return value + " B"
     }
 
+    function formatModifiedTime(epoch) {
+        var value = Number(epoch || 0)
+        if (value <= 0)
+            return ""
+        var timestamp = value > 9999999999 ? value : value * 1000
+        var date = new Date(timestamp)
+        if (isNaN(date.getTime()))
+            return ""
+        function pad(n) { return n < 10 ? "0" + n : String(n) }
+        return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes())
+    }
+
+    function showStatusToast(message) {
+        var text = String(message || "")
+        if (text.length === 0 || text === lastToastMessage)
+            return
+        lastToastMessage = text
+        toast.show(text)
+    }
+
     function shortenPath(path, maxLen) {
         var text = String(path || "")
         if (text.length <= maxLen)
@@ -223,6 +275,28 @@ Item {
     Connections {
         target: remoteFilesVm
         function onProfilesChanged() { root.ensureSelectedProfile() }
+        function onStatusMessageChanged() {
+            var message = remoteFilesVm.statusMessage || ""
+            if (message.indexOf("上传") >= 0 || message.indexOf("传输") >= 0 || message.indexOf("失败") >= 0)
+                root.showStatusToast(message)
+        }
+        function onFtpLogCopied(ok, message) {
+            root.showStatusToast(message || (ok ? "日志已复制" : "复制失败"))
+        }
+        function onHostKeyPromptRequested(info) {
+            hostKeyDialog.profileId = info.profileId || ""
+            hostKeyDialog.host = info.host || ""
+            hostKeyDialog.port = info.port || 0
+            hostKeyDialog.keyType = info.keyType || ""
+            hostKeyDialog.fingerprintSha256 = info.fingerprintSha256 || ""
+            hostKeyDialog.fingerprintMd5 = info.fingerprintMd5 || ""
+            hostKeyDialog.responded = false
+            hostKeyDialog.open()
+        }
+        function onEditedFileUploadRequested(info) {
+            root.pendingEditedFile = info || {}
+            editedFileUploadDialog.open()
+        }
     }
 
     Rectangle {
@@ -506,8 +580,8 @@ Item {
 
                     RemoteFilePane {
                         id: remotePane
-                        SplitView.preferredWidth: 380
-                        SplitView.minimumWidth: 260
+                        SplitView.preferredWidth: 520
+                        SplitView.minimumWidth: 320
                         enabled: root.connected
                     }
 
@@ -791,28 +865,21 @@ Item {
 
     // ============ Menus ============
     function openPopupAtMouse(popup, srcItem, mouse) {
+        if (popup.openAt) {
+            popup.openAt(srcItem, mouse.x, mouse.y)
+            return
+        }
         var p = srcItem.mapToItem(Overlay.overlay, mouse.x, mouse.y)
         popup.x = p.x
         popup.y = p.y
         popup.open()
     }
 
-    Popup {
+    UiMenuPopup {
         id: profileMenu
-        parent: Overlay.overlay
         width: 200
-        height: profileMenuColumn.implicitHeight + 8
-        padding: 4
-        modal: false
-        focus: true
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.98; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-            }
-        }
-        background: UiMenuSurface { dark: root.dark; radius: 8 }
+        dark: root.dark
+
         contentItem: Column {
             id: profileMenuColumn
             spacing: 0
@@ -874,25 +941,15 @@ Item {
         }
     }
 
-    Popup {
+    UiMenuPopup {
         id: remoteFileMenu
-        parent: Overlay.overlay
         width: 220
-        height: remoteFileMenuColumn.implicitHeight + 8
-        padding: 4
-        modal: false
-        focus: true
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        dark: root.dark
         property bool itemIsDir: root.contextItem ? !!root.contextItem.isDir : false
         property bool hasItem: root.contextItem !== null
         property bool itemIsParent: root.contextItem && root.contextItem.name === ".."
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.98; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-            }
-        }
-        background: UiMenuSurface { dark: root.dark; radius: 8 }
+        property bool itemCanEditFile: remoteFileMenu.hasItem && !remoteFileMenu.itemIsDir && remoteFilesVm.canEditRemoteFile(root.contextItem)
+
         contentItem: Column {
             id: remoteFileMenuColumn
             spacing: 0
@@ -917,6 +974,17 @@ Item {
                 itemEnabled: remoteFileMenu.hasItem && !remoteFileMenu.itemIsDir
                 text: "下载到…"
                 onTriggered: { downloadFolderDialog.open(); remoteFileMenu.close() }
+            }
+            UiMenuItem {
+                width: remoteFileMenu.width - 8
+                dark: root.dark
+                itemEnabled: remoteFileMenu.itemCanEditFile
+                text: "编辑…"
+                onTriggered: {
+                    if (!root.contextItem) return
+                    remoteFilesVm.editRemoteFile(root.contextItem)
+                    remoteFileMenu.close()
+                }
             }
             UiMenuSeparator { width: remoteFileMenu.width - 8; dark: root.dark }
             UiMenuItem {
@@ -1055,6 +1123,8 @@ Item {
                 }
             }
         }
+
+        onOpened: root.resetProfileDialogFields()
 
         onAccepted: {
             var p = copyProfile(editingProfile)
@@ -1495,12 +1565,464 @@ Item {
         UiTextField { id: renameField; dark: root.dark; width: 320; placeholderText: "新名称" }
     }
 
-    MessageDialog {
+    Dialog {
         id: deleteDialog
-        title: "确认删除"
-        text: "删除选中的远程文件或空目录？"
-        buttons: MessageDialog.Yes | MessageDialog.No
-        onAccepted: remoteFilesVm.deleteRemote(root.selectedRemoteItems)
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: 390
+        padding: 0
+        closePolicy: Popup.CloseOnEscape
+
+        background: UiPopupSurface {
+            dark: root.dark
+            radius: 14
+            fillColor: surface
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 18
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 22
+                Layout.rightMargin: 22
+                Layout.topMargin: 22
+                spacing: 14
+
+                Rectangle {
+                    Layout.preferredWidth: 38
+                    Layout.preferredHeight: 38
+                    Layout.alignment: Qt.AlignTop
+                    radius: 10
+                    color: dark ? Qt.rgba(1, 0.27, 0.23, 0.16) : Qt.rgba(1, 0.23, 0.18, 0.10)
+
+                    UiIcon {
+                        anchors.centerIn: parent
+                        width: 21
+                        height: 21
+                        iconSize: 21
+                        name: "mdi6.trash-can-outline"
+                        color: danger
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "删除远程项目？"
+                        color: textMain
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "选中的文件或目录会从服务器删除。目录会连同内部内容一起删除。"
+                        color: textMuted
+                        font.pixelSize: 12
+                        lineHeight: 1.15
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 22
+                Layout.rightMargin: 22
+                Layout.bottomMargin: 20
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                PushButton {
+                    label: "取消"
+                    onClicked: deleteDialog.close()
+                }
+
+                PushButton {
+                    label: "删除"
+                    dangerRole: true
+                    onClicked: {
+                        remoteFilesVm.deleteRemote(root.selectedRemoteItems)
+                        deleteDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: editedFileUploadDialog
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: 440
+        padding: 0
+        closePolicy: Popup.CloseOnEscape
+
+        background: UiPopupSurface {
+            dark: root.dark
+            radius: 14
+            fillColor: surface
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 18
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 22
+                Layout.rightMargin: 22
+                Layout.topMargin: 22
+                spacing: 14
+
+                Rectangle {
+                    Layout.preferredWidth: 38
+                    Layout.preferredHeight: 38
+                    Layout.alignment: Qt.AlignTop
+                    radius: 10
+                    color: dark ? Qt.rgba(0.10, 0.52, 1.0, 0.18) : Qt.rgba(0.10, 0.52, 1.0, 0.10)
+
+                    UiIcon {
+                        anchors.centerIn: parent
+                        width: 21
+                        height: 21
+                        iconSize: 21
+                        name: "mdi6.cloud-upload-outline"
+                        color: selectedBg
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "回传编辑后的文件？"
+                        color: textMain
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "检测到本地编辑副本已保存，是否上传覆盖服务器上的同名文件？"
+                        color: textMuted
+                        font.pixelSize: 12
+                        lineHeight: 1.15
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 72
+                        radius: 8
+                        color: dark ? "#232837" : "#F4F6FA"
+                        border.width: 1
+                        border.color: dark ? "#3A4252" : "#E1E4EC"
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 5
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.pendingEditedFile.remotePath || ""
+                                color: textMain
+                                font.pixelSize: 12
+                                elide: Text.ElideMiddle
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.pendingEditedFile.localPath || ""
+                                color: textMuted
+                                font.pixelSize: 11
+                                elide: Text.ElideMiddle
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 22
+                Layout.rightMargin: 22
+                Layout.bottomMargin: 20
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                PushButton {
+                    label: "暂不回传"
+                    onClicked: {
+                        remoteFilesVm.skipEditedFileUpload(root.pendingEditedFile.id || "")
+                        editedFileUploadDialog.close()
+                    }
+                }
+
+                PushButton {
+                    label: "回传"
+                    accent: true
+                    onClicked: {
+                        remoteFilesVm.uploadEditedFile(root.pendingEditedFile.id || "")
+                        editedFileUploadDialog.close()
+                    }
+                }
+            }
+        }
+
+        onClosed: root.pendingEditedFile = ({})
+    }
+
+    Dialog {
+        id: hostKeyDialog
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: Overlay.overlay
+        width: 520
+        padding: 0
+
+        property string profileId: ""
+        property string host: ""
+        property int port: 0
+        property string keyType: ""
+        property string fingerprintSha256: ""
+        property string fingerprintMd5: ""
+        property bool responded: false
+
+        background: Rectangle {
+            color: surface
+            radius: 14
+            border.width: 1
+            border.color: dark ? "#3D4555" : "#D8DAE2"
+        }
+
+        header: Rectangle {
+            color: "transparent"
+            implicitHeight: 72
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                anchors.topMargin: 18
+                anchors.bottomMargin: 12
+                spacing: 4
+                Label {
+                    text: "确认主机指纹"
+                    color: textMain
+                    font.pixelSize: 17
+                    font.weight: Font.DemiBold
+                }
+                Label {
+                    text: "首次连接到该主机。请核对指纹后再继续。"
+                    color: textMuted
+                    font.pixelSize: 12
+                }
+            }
+        }
+
+        footer: Rectangle {
+            color: surfaceSubtle
+            implicitHeight: 58
+            radius: 14
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: separator
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 14
+                color: surfaceSubtle
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: 12
+
+                Label {
+                    Layout.fillWidth: true
+                    text: "接受将写入 ~/.ssh/known_hosts。"
+                    color: textFaint
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
+
+                PushButton {
+                    label: "拒绝"
+                    onClicked: hostKeyDialog.reject()
+                }
+                PushButton {
+                    label: "接受"
+                    accent: true
+                    onClicked: hostKeyDialog.accept()
+                }
+            }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            Item { Layout.preferredHeight: 4 }
+
+            GridLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 24
+                Layout.rightMargin: 24
+                columns: 2
+                columnSpacing: 16
+                rowSpacing: 8
+
+                Label { text: "主机"; color: textMuted; font.pixelSize: 12 }
+                Label {
+                    text: hostKeyDialog.host + (hostKeyDialog.port > 0 ? (":" + hostKeyDialog.port) : "")
+                    color: textMain
+                    font.pixelSize: 13
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+
+                Label { text: "密钥类型"; color: textMuted; font.pixelSize: 12 }
+                Label {
+                    text: hostKeyDialog.keyType
+                    color: textMain
+                    font.pixelSize: 13
+                    Layout.fillWidth: true
+                }
+
+                Label { text: "SHA256"; color: textMuted; font.pixelSize: 12 }
+                Label {
+                    text: hostKeyDialog.fingerprintSha256
+                    color: textMain
+                    font.pixelSize: 12
+                    font.family: Theme.fontFamily.mono
+                    Layout.fillWidth: true
+                    wrapMode: Text.WrapAnywhere
+                }
+
+                Label { text: "MD5"; color: textMuted; font.pixelSize: 12 }
+                Label {
+                    text: hostKeyDialog.fingerprintMd5
+                    color: textMain
+                    font.pixelSize: 12
+                    font.family: Theme.fontFamily.mono
+                    Layout.fillWidth: true
+                    wrapMode: Text.WrapAnywhere
+                }
+            }
+
+            Item { Layout.preferredHeight: 8 }
+        }
+
+        onAccepted: {
+            hostKeyDialog.responded = true
+            remoteFilesVm.respondHostKeyPrompt(hostKeyDialog.profileId, true)
+        }
+        onRejected: {
+            hostKeyDialog.responded = true
+            remoteFilesVm.respondHostKeyPrompt(hostKeyDialog.profileId, false)
+        }
+        onClosed: {
+            if (!hostKeyDialog.responded && hostKeyDialog.profileId.length > 0) {
+                remoteFilesVm.respondHostKeyPrompt(hostKeyDialog.profileId, false)
+            }
+            hostKeyDialog.responded = true
+        }
+    }
+
+    Rectangle {
+        id: toast
+        parent: Overlay.overlay
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: 18
+        anchors.topMargin: 18
+        width: Math.min(parent ? parent.width - 36 : 360, Math.max(280, toastLabel.implicitWidth + 84))
+        height: 52
+        radius: 8
+        color: dark ? "#163A5C" : "#E8F3FF"
+        border.width: 1
+        border.color: selectedBg
+        opacity: 0
+        visible: opacity > 0
+        z: 1000
+        property string text: ""
+
+        function show(message) {
+            text = String(message || "")
+            opacity = 0.96
+            toastTimer.restart()
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 10
+
+            Rectangle {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 14
+                color: selectedBg
+
+                UiIcon {
+                    anchors.centerIn: parent
+                    width: 16
+                    height: 16
+                    iconSize: 16
+                    name: "mdi6.cloud-upload-outline"
+                    color: "#FFFFFF"
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                Label {
+                    text: "操作提示"
+                    color: dark ? "#FFFFFF" : "#0D3154"
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
+
+                Label {
+                    id: toastLabel
+                    Layout.fillWidth: true
+                    text: toast.text
+                    color: dark ? "#EAF4FF" : "#16456F"
+                    font.pixelSize: 12
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Timer {
+            id: toastTimer
+            interval: 2400
+            onTriggered: {
+                toast.opacity = 0
+                root.lastToastMessage = ""
+            }
+        }
     }
 
     // ============ Components ============
@@ -1573,6 +2095,19 @@ Item {
             if (fileList.currentIndex < 0 || fileList.currentIndex >= (remoteFilesVm.remoteItems || []).length)
                 return null
             return remoteFilesVm.remoteItems[fileList.currentIndex]
+        }
+
+        function acceptFileDrop(event) {
+            if (!event || !event.hasUrls) {
+                if (event)
+                    event.accepted = false
+                return false
+            }
+            event.accept(Qt.CopyAction)
+            if (event.acceptProposedAction)
+                event.acceptProposedAction()
+            event.accepted = true
+            return true
         }
 
         ColumnLayout {
@@ -1708,6 +2243,7 @@ Item {
 
                     Label { text: ""; Layout.preferredWidth: 20 }
                     Label { text: "名称"; color: textMuted; font.pixelSize: 11; Layout.fillWidth: true }
+                    Label { text: "修改时间"; color: textMuted; font.pixelSize: 11; Layout.preferredWidth: 132 }
                     Label { text: "大小"; color: textMuted; font.pixelSize: 11; Layout.preferredWidth: 86; horizontalAlignment: Text.AlignRight }
                 }
 
@@ -1763,6 +2299,14 @@ Item {
                             }
 
                             Label {
+                                text: root.formatModifiedTime(modelData.modifiedAt || 0)
+                                color: textMuted
+                                font.pixelSize: 11
+                                Layout.preferredWidth: 132
+                                elide: Text.ElideRight
+                            }
+
+                            Label {
                                 text: modelData.isDir ? "" : root.formatSize(modelData.size || 0)
                                 color: textMuted
                                 font.pixelSize: 12
@@ -1789,7 +2333,7 @@ Item {
                                 if (modelData.isDir)
                                     remoteFilesVm.changeRemotePath(modelData.path || "")
                                 else
-                                    remoteFilesVm.downloadFiles([modelData])
+                                    remoteFilesVm.editRemoteFile(modelData)
                             }
                         }
                     }
@@ -1832,15 +2376,19 @@ Item {
                     anchors.fill: parent
                     enabled: pane.enabled
                     onEntered: function(event) {
-                        if (event.hasUrls)
+                        if (pane.acceptFileDrop(event)) {
                             dropOverlay.visible = true
-                        else
-                            event.accepted = false
+                        }
+                    }
+                    onPositionChanged: function(event) {
+                        if (pane.acceptFileDrop(event)) {
+                            dropOverlay.visible = true
+                        }
                     }
                     onExited: dropOverlay.visible = false
                     onDropped: function(event) {
                         dropOverlay.visible = false
-                        if (!event.hasUrls)
+                        if (!pane.acceptFileDrop(event))
                             return
                         var paths = []
                         var urls = event.urls || []
@@ -1848,6 +2396,7 @@ Item {
                             paths.push(urls[i].toString())
                         if (paths.length > 0)
                             remoteFilesVm.uploadPaths(paths)
+                        pane.acceptFileDrop(event)
                     }
                 }
 
@@ -1862,7 +2411,9 @@ Item {
                     border.color: selectedBg
 
                     ColumnLayout {
-                        anchors.centerIn: parent
+                        anchors.fill: parent
+                        anchors.leftMargin: 24
+                        anchors.rightMargin: 24
                         spacing: 8
                         UiIcon {
                             Layout.alignment: Qt.AlignHCenter
@@ -1872,13 +2423,19 @@ Item {
                             name: "mdi6.cloud-upload-outline"
                             color: selectedBg
                         }
+                        Item { Layout.fillHeight: true }
                         Label {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
                             text: "释放以上传到 " + remoteFilesVm.remotePath
                             color: selectedBg
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
+                            elide: Text.ElideMiddle
+                            wrapMode: Text.NoWrap
                         }
+                        Item { Layout.fillHeight: true }
                     }
                 }
             }
@@ -1991,38 +2548,23 @@ Item {
                     request.accepted = true
                     webContextMenu.editFlags = request.editFlags
                     webContextMenu.hasSelection = (request.selectedText || "").length > 0
-                    var p = terminalView.mapToItem(Overlay.overlay, request.position.x, request.position.y)
-                    webContextMenu.x = p.x
-                    webContextMenu.y = p.y
-                    webContextMenu.open()
+                    webContextMenu.openAt(terminalView, request.position.x, request.position.y)
                 }
             }
 
-            Popup {
+            UiMenuPopup {
                 id: webContextMenu
-                parent: Overlay.overlay
                 width: 200
-                height: webContextMenuColumn.implicitHeight + 8
-                padding: 4
-                modal: false
-                focus: true
-                closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                dark: root.dark
                 property int editFlags: 0
                 property bool hasSelection: false
-                // bit constants matching Qt's WebEngineContextMenuRequest::EditFlag
                 readonly property int flagCanUndo: 0x1
                 readonly property int flagCanRedo: 0x2
                 readonly property int flagCanCut: 0x4
                 readonly property int flagCanCopy: 0x8
                 readonly property int flagCanPaste: 0x10
                 readonly property int flagCanSelectAll: 0x40
-                enter: Transition {
-                    ParallelAnimation {
-                        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                        NumberAnimation { property: "scale"; from: 0.98; to: 1.0; duration: 80; easing.type: Easing.OutCubic }
-                    }
-                }
-                background: UiMenuSurface { dark: root.dark; radius: 8 }
+
                 contentItem: Column {
                     id: webContextMenuColumn
                     spacing: 0
@@ -2119,6 +2661,13 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     PushButton {
+                        label: "复制全部"
+                        iconName: "mdi6.content-copy"
+                        enabled: (remoteFilesVm.ftpLog || []).length > 0
+                        onClicked: remoteFilesVm.copyFtpLog()
+                    }
+
+                    PushButton {
                         label: "清空"
                         iconName: "mdi6.broom"
                         enabled: (remoteFilesVm.ftpLog || []).length > 0
@@ -2152,8 +2701,23 @@ Item {
                     boundsBehavior: Flickable.StopAtBounds
                     onCountChanged: positionViewAtEnd()
                     delegate: Item {
+                        id: ftpLogRow
+                        required property string modelData
+
                         width: ftpLogList.width
                         height: lineLabel.implicitHeight + 4
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.RightButton
+                            onClicked: function(mouse) {
+                                if (mouse.button !== Qt.RightButton)
+                                    return
+                                ftpLogMenu.lineText = ftpLogRow.modelData || ""
+                                ftpLogMenu.openAt(ftpLogRow, mouse.x, mouse.y)
+                            }
+                        }
+
                         Label {
                             id: lineLabel
                             anchors.left: parent.left
@@ -2161,11 +2725,12 @@ Item {
                             anchors.leftMargin: 14
                             anchors.rightMargin: 14
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData
+                            text: ftpLogRow.modelData
                             color: {
-                                var t = String(modelData || "")
+                                var t = String(ftpLogRow.modelData || "")
                                 if (t.indexOf("*cmd*") >= 0) return "#7CB7FF"
                                 if (t.indexOf("*resp*") >= 0) return "#A5E3A1"
+                                if (t.indexOf("fallback to LIST") >= 0) return "#A5E3A1"
                                 return dark ? "#D6D8E1" : "#E0E3EA"
                             }
                             font.family: "SF Mono, Menlo, Consolas, monospace"
@@ -2176,114 +2741,57 @@ Item {
                     }
                 }
             }
-        }
-    }
 
-    component IconButton: Rectangle {
-        id: control
+            UiMenuPopup {
+                id: ftpLogMenu
+                width: 200
+                dark: root.dark
+                property string lineText: ""
 
-        property string iconName: ""
-        property string tooltip: ""
-        property bool accent: false
-        property bool dangerRole: false
-        signal clicked()
+                contentItem: Column {
+                    id: ftpLogMenuColumn
+                    spacing: 0
 
-        implicitWidth: 30
-        implicitHeight: 28
-        radius: 7
-        opacity: enabled ? 1.0 : 0.45
-        color: {
-            if (control.accent)
-                return iconMouse.pressed ? Qt.darker(selectedBg, 1.15) : selectedBg
-            if (iconMouse.containsMouse || iconMouse.pressed)
-                return rowHover
-            return "transparent"
-        }
-        border.width: control.accent ? 0 : 1
-        border.color: iconMouse.containsMouse && !control.accent ? separator : "transparent"
-
-        UiIcon {
-            anchors.centerIn: parent
-            width: 16
-            height: 16
-            iconSize: 16
-            name: control.iconName
-            color: {
-                if (control.accent)
-                    return "#FFFFFF"
-                if (control.dangerRole)
-                    return danger
-                return textMuted
+                    UiMenuItem {
+                        width: ftpLogMenu.width - 8
+                        dark: root.dark
+                        text: "复制当前行"
+                        itemEnabled: ftpLogMenu.lineText.length > 0
+                        onTriggered: { remoteFilesVm.copyFtpLogLine(ftpLogMenu.lineText); ftpLogMenu.close() }
+                    }
+                    UiMenuItem {
+                        width: ftpLogMenu.width - 8
+                        dark: root.dark
+                        text: "复制全部"
+                        itemEnabled: (remoteFilesVm.ftpLog || []).length > 0
+                        onTriggered: { remoteFilesVm.copyFtpLog(); ftpLogMenu.close() }
+                    }
+                }
             }
         }
-
-        MouseArea {
-            id: iconMouse
-
-            anchors.fill: parent
-            enabled: control.enabled
-            hoverEnabled: true
-            cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: control.clicked()
-        }
-
-        ToolTip.visible: iconMouse.containsMouse && control.tooltip.length > 0
-        ToolTip.text: control.tooltip
-        ToolTip.delay: 450
     }
 
-    component PushButton: Rectangle {
+    component IconButton: UiIconButton {
+        id: control
+
+        property bool dangerRole: false
+
+        dark: root.dark
+        danger: dangerRole
+        controlSize: 28
+    }
+
+    component PushButton: UiButton {
         id: control
 
         property string label: ""
-        property string iconName: ""
         property bool accent: false
-        signal clicked()
+        property bool dangerRole: false
 
-        implicitWidth: Math.max(accent ? 92 : 76, contentRow.implicitWidth + 24)
-        implicitHeight: 30
-        radius: 7
-        opacity: enabled ? 1.0 : 0.45
-        color: {
-            if (control.accent)
-                return buttonMouse.pressed ? Qt.darker(selectedBg, 1.15) : selectedBg
-            if (buttonMouse.containsMouse || buttonMouse.pressed)
-                return rowHover
-            return root.dark ? "#2A303C" : "#FFFFFF"
-        }
-        border.width: control.accent ? 0 : 1
-        border.color: separator
-
-        RowLayout {
-            id: contentRow
-            anchors.centerIn: parent
-            spacing: 6
-
-            UiIcon {
-                visible: control.iconName.length > 0
-                Layout.preferredWidth: 15
-                Layout.preferredHeight: 15
-                iconSize: 15
-                name: control.iconName
-                color: control.accent ? "#FFFFFF" : textMuted
-            }
-
-            Label {
-                text: control.label
-                color: control.accent ? "#FFFFFF" : textMain
-                font.pixelSize: 12
-                font.weight: Font.Medium
-            }
-        }
-
-        MouseArea {
-            id: buttonMouse
-
-            anchors.fill: parent
-            enabled: control.enabled
-            hoverEnabled: true
-            cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: control.clicked()
-        }
+        dark: root.dark
+        text: label
+        variant: accent ? "primary" : "secondary"
+        danger: dangerRole
+        font.pixelSize: 12
     }
 }

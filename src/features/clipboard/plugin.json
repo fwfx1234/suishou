@@ -12,7 +12,8 @@
   "window": {
     "width": 980,
     "height": 640,
-    "alwaysOnTop": true
+    "alwaysOnTop": true,
+    "closeOnEsc": true
   },
   "order": 7,
   "commands": [

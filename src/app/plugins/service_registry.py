@@ -13,10 +13,12 @@ class ServiceRegistry:
         platform: object | None = None,
         storage: object | None = None,
         clipboard: object | None = None,
+        settings: object | None = None,
     ) -> None:
         self._platform = platform
         self._storage = storage
         self._clipboard = clipboard
+        self._settings = settings
 
     @property
     def platform(self) -> object | None:
@@ -41,6 +43,14 @@ class ServiceRegistry:
     @clipboard.setter
     def clipboard(self, value: object | None) -> None:
         self._clipboard = value
+
+    @property
+    def settings(self) -> object | None:
+        return self._settings
+
+    @settings.setter
+    def settings(self, value: object | None) -> None:
+        self._settings = value
 
     def require(self, key: str) -> object:
         value = getattr(self, key, None)

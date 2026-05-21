@@ -797,18 +797,37 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 14
 
-                                TextArea {
+                                Flickable {
+                                    id: detailFlickable
+
                                     visible: selectedItem.itemType !== "image"
                                     anchors.fill: parent
-                                    readOnly: true
-                                    wrapMode: TextEdit.Wrap
-                                    text: selectedItem.detail || ""
-                                    color: textMain
-                                    selectedTextColor: "#FFFFFF"
-                                    selectionColor: selectedStrongBg
-                                    font.pixelSize: 13
-                                    font.family: selectedItem.itemType === "text" ? monoFont : macFont
-                                    background: null
+                                    clip: true
+                                    contentWidth: width
+                                    contentHeight: Math.max(height, detailTextEdit.contentHeight)
+                                    boundsBehavior: Flickable.StopAtBounds
+
+                                    UiTextEdit {
+                                        id: detailTextEdit
+
+                                        width: detailFlickable.width
+                                        height: Math.max(detailFlickable.height, contentHeight)
+                                        dark: root.dark
+                                        readOnly: true
+                                        wrapMode: TextEdit.Wrap
+                                        text: selectedItem.detail || ""
+                                        color: textMain
+                                        selectedTextColor: "#FFFFFF"
+                                        selectionColor: selectedStrongBg
+                                        font.pixelSize: 13
+                                        font.family: selectedItem.itemType === "text" ? monoFont : macFont
+                                    }
+
+                                    ScrollBar.vertical: ScrollBar {
+                                        policy: detailFlickable.contentHeight > detailFlickable.height
+                                            ? ScrollBar.AsNeeded
+                                            : ScrollBar.AlwaysOff
+                                    }
                                 }
 
                                 Image {
@@ -1209,11 +1228,12 @@ Item {
         focus: edit.activeFocus
         Keys.forwardTo: [edit]
 
-        TextEdit {
+        UiTextEdit {
             id: edit
 
             anchors.fill: parent
             anchors.margins: 10
+            dark: root.dark
             focus: true
             wrapMode: TextEdit.Wrap
             color: textMain
@@ -1264,98 +1284,27 @@ Item {
         }
     }
 
-    component IconButton: Rectangle {
+    component IconButton: UiIconButton {
         id: control
 
-        property string iconName: ""
-        property string tooltip: ""
-        property bool accent: false
         property bool dangerRole: false
-        signal clicked()
 
-        implicitWidth: 34
-        implicitHeight: 30
-        radius: 8
-        color: {
-            if (!control.enabled)
-                return "transparent"
-            if (control.accent)
-                return iconMouse.pressed ? Qt.darker(selectedStrongBg, 1.15) : selectedStrongBg
-            if (iconMouse.containsMouse || iconMouse.pressed)
-                return hoverBg
-            return "transparent"
-        }
-        border.width: control.accent ? 0 : 1
-        border.color: iconMouse.containsMouse && !control.accent ? hairlineColor : "transparent"
-
-        UiIcon {
-            anchors.centerIn: parent
-            width: 16
-            height: 16
-            name: control.iconName
-            color: {
-                if (!control.enabled)
-                    return textFaint
-                if (control.accent)
-                    return "#FFFFFF"
-                if (control.dangerRole)
-                    return danger
-                return textMuted
-            }
-            iconSize: 16
-        }
-
-        MouseArea {
-            id: iconMouse
-
-            anchors.fill: parent
-            enabled: control.enabled
-            hoverEnabled: true
-            cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: control.clicked()
-        }
-
-        ToolTip.visible: iconMouse.containsMouse && control.tooltip.length > 0
-        ToolTip.text: control.tooltip
-        ToolTip.delay: 450
+        dark: root.dark
+        danger: dangerRole
+        controlSize: 30
     }
 
-    component PushButton: Rectangle {
+    component PushButton: UiButton {
         id: control
 
         property string label: ""
         property bool accent: false
-        signal clicked()
 
-        implicitWidth: Math.max(86, buttonText.implicitWidth + 28)
-        implicitHeight: 32
-        radius: 8
-        color: control.accent
-            ? (pushMouse.pressed ? Qt.darker(selectedStrongBg, 1.15) : selectedStrongBg)
-            : (pushMouse.pressed ? Qt.rgba(0, 0, 0, root.dark ? 0.22 : 0.08) : (pushMouse.containsMouse ? hoverBg : raisedBg))
-        border.width: control.accent ? 0 : 1
-        border.color: hairlineColor
-
-        Label {
-            id: buttonText
-            anchors.fill: parent
-            text: control.label
-            color: control.accent ? "#FFFFFF" : textMain
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 13
-            font.weight: Font.Medium
-            font.family: macFont
-        }
-
-        MouseArea {
-            id: pushMouse
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: control.clicked()
-        }
+        dark: root.dark
+        text: label
+        variant: accent ? "primary" : "secondary"
+        font.pixelSize: 13
+        font.family: macFont
     }
 
     component SettingSwitch: RowLayout {

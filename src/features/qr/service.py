@@ -14,13 +14,11 @@ except Exception:  # pragma: no cover
     cv2 = None
 
 
-DEFAULT_AUTO_SAVE_DIR = Path.home() / "Downloads" / "PyDesktopTools" / "QR"
-
-
 class QrService:
-    def __init__(self, save_root: Path | None = None) -> None:
+    def __init__(self, paths: object, save_root: Path | None = None) -> None:
         self._history: list[dict] = []
-        self._save_root = save_root or DEFAULT_AUTO_SAVE_DIR
+        self._paths = paths
+        self._save_root = save_root or paths.feature_output_dir("QR")
 
     @property
     def save_root(self) -> Path:

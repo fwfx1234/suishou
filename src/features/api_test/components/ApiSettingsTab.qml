@@ -275,9 +275,10 @@ Item {
                         font.pixelSize: Theme.fontSize.caption
                         elide: Text.ElideRight
                     }
-                    TextArea {
+                    UiTextArea {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        dark: root.dark
                         readOnly: true
                         wrapMode: TextEdit.NoWrap
                         color: root.textMain

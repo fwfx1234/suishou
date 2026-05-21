@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../../app/ui"
 
 Item {
     id: root
@@ -129,9 +130,10 @@ Item {
                         anchors.rightMargin: 8
                         spacing: 6
                         Label { text: "🔍"; color: textMuted; font.pixelSize: 12 }
-                        TextField {
+                        UiTextField {
                             id: searchField
                             Layout.fillWidth: true
+                            dark: root.dark
                             placeholderText: "搜索动作"
                             font.family: sfFont
                             font.pixelSize: 12
@@ -170,6 +172,7 @@ Item {
             delegate: Rectangle {
                 required property var modelData
                 required property int index
+                readonly property bool isRunning: vm ? (vm.runningActionIds || []).indexOf(modelData.id) >= 0 : false
                 width: ListView.view.width
                 height: 64
                 color: rowMouse.containsMouse ? rowHover : "transparent"
@@ -228,6 +231,12 @@ Item {
                                 chipColor: Qt.rgba(0.5,0.5,0.5,0.18)
                                 textColor: textMuted
                             }
+                            MacChip {
+                                visible: isRunning
+                                text: "运行中"
+                                chipColor: Qt.rgba(0.18, 0.82, 0.34, dark ? 0.28 : 0.18)
+                                textColor: success
+                            }
                         }
                         Label {
                             text: subtitleFor(modelData)
@@ -240,17 +249,26 @@ Item {
                     }
 
                     MacButton {
+                        visible: !isRunning
                         text: "  ▶ 运行  "
                         variant: "primary"
                         onClicked: vm && vm.runNow(modelData.id)
+                    }
+                    MacButton {
+                        visible: isRunning
+                        text: "  ■ 停止  "
+                        variant: "secondary"
+                        danger: true
+                        onClicked: vm && vm.stopAction(modelData.id)
                     }
                     MacButton {
                         text: "  编辑  "
                         onClicked: actionSheet.openEdit(modelData)
                     }
                     MacIconButton {
+                        id: actionMoreButton
                         text: "⋯"
-                        onClicked: actionMenu.openFor(modelData)
+                        onClicked: actionMenu.openFor(modelData, actionMoreButton)
                     }
                 }
 
@@ -275,29 +293,75 @@ Item {
     }
 
     // ---- Action context menu (more options) ----
-    Menu {
+    UiMenuPopup {
         id: actionMenu
         property var current: null
-        function openFor(action) {
+        readonly property bool currentRunning: current && vm ? (vm.runningActionIds || []).indexOf(current.id) >= 0 : false
+        width: 180
+        dark: root.dark
+
+        function openFor(action, sourceItem) {
             current = action
-            popup()
+            openAt(sourceItem || root, 0, sourceItem ? sourceItem.height + 4 : 0)
         }
-        MenuItem {
-            text: actionMenu.current && actionMenu.current.enabled ? "停用" : "启用"
-            onTriggered: if (vm && actionMenu.current) vm.setActionEnabled(actionMenu.current.id, !actionMenu.current.enabled)
-        }
-        MenuItem {
-            text: "复制"
-            onTriggered: if (vm && actionMenu.current) vm.duplicateAction(actionMenu.current.id)
-        }
-        MenuItem {
-            text: "查看运行历史"
-            onTriggered: if (actionMenu.current) historySheet.openFor(actionMenu.current.id, actionMenu.current.name)
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: "删除"
-            onTriggered: if (actionMenu.current) confirmSheet.openFor(actionMenu.current.id, actionMenu.current.name)
+
+        contentItem: Column {
+            spacing: 0
+
+            UiMenuItem {
+                width: actionMenu.width - 8
+                dark: root.dark
+                visible: actionMenu.currentRunning
+                text: "停止"
+                destructive: true
+                onTriggered: {
+                    if (vm && actionMenu.current)
+                        vm.stopAction(actionMenu.current.id)
+                    actionMenu.close()
+                }
+            }
+            UiMenuItem {
+                width: actionMenu.width - 8
+                dark: root.dark
+                text: actionMenu.current && actionMenu.current.enabled ? "停用" : "启用"
+                onTriggered: {
+                    if (vm && actionMenu.current)
+                        vm.setActionEnabled(actionMenu.current.id, !actionMenu.current.enabled)
+                    actionMenu.close()
+                }
+            }
+            UiMenuItem {
+                width: actionMenu.width - 8
+                dark: root.dark
+                text: "复制"
+                onTriggered: {
+                    if (vm && actionMenu.current)
+                        vm.duplicateAction(actionMenu.current.id)
+                    actionMenu.close()
+                }
+            }
+            UiMenuItem {
+                width: actionMenu.width - 8
+                dark: root.dark
+                text: "查看运行历史"
+                onTriggered: {
+                    if (actionMenu.current)
+                        historySheet.openFor(actionMenu.current.id, actionMenu.current.name)
+                    actionMenu.close()
+                }
+            }
+            UiMenuSeparator { width: actionMenu.width - 8; dark: root.dark }
+            UiMenuItem {
+                width: actionMenu.width - 8
+                dark: root.dark
+                text: "删除"
+                destructive: true
+                onTriggered: {
+                    if (actionMenu.current)
+                        confirmSheet.openFor(actionMenu.current.id, actionMenu.current.name)
+                    actionMenu.close()
+                }
+            }
         }
     }
 
@@ -364,7 +428,29 @@ Item {
                 }
 
                 MacFormRow {
-                    visible: fKind.currentKey === "script" || fKind.currentKey === "open_path"
+                    visible: fKind.currentKey === "script"
+                    label: "脚本来源"
+                    MacSegmented {
+                        id: fScriptSource
+                        Layout.fillWidth: true
+                        options: ["文件", "内联"]
+                        keys: ["path", "inline"]
+                    }
+                }
+
+                MacFormRow {
+                    visible: fKind.currentKey === "script" && fScriptSource.currentKey === "inline"
+                    label: "脚本内容"
+                    MacTextArea {
+                        id: fScriptBody
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 140
+                        placeholderText: "如：echo \"hello ${name}\""
+                    }
+                }
+
+                MacFormRow {
+                    visible: (fKind.currentKey === "script" && fScriptSource.currentKey === "path") || fKind.currentKey === "open_path"
                     label: fKind.currentKey === "script" ? "脚本路径" : "目标路径"
                     RowLayout {
                         Layout.fillWidth: true
@@ -521,6 +607,7 @@ Item {
             fName.text = ""
             fDesc.text = ""
             fPath.text = ""
+            fScriptBody.text = ""
             fUrl.text = ""
             fArgs.text = ""
             fCwd.text = ""
@@ -532,6 +619,7 @@ Item {
             fEnabled.checked = true
             fKind.currentIndex = 0
             fScriptType.currentIndex = 0
+            fScriptSource.currentIndex = 0
             fFeedback.currentIndex = 2
             open()
         }
@@ -541,6 +629,7 @@ Item {
             fName.text = a.name || ""
             fDesc.text = a.description || ""
             fPath.text = a.path || ""
+            fScriptBody.text = a.scriptBody || ""
             fUrl.text = a.url || ""
             fArgs.text = a.args || ""
             fCwd.text = a.cwd || ""
@@ -551,6 +640,7 @@ Item {
             fEnabled.checked = !!a.enabled
             fKind.setKey(a.kind || "script")
             fScriptType.setKey(a.scriptType || "shell")
+            fScriptSource.setKey(a.scriptSource || "path")
             fFeedback.setKey(a.feedbackMode || "notification")
             var envText = ""
             var env = a.env || {}
@@ -578,6 +668,8 @@ Item {
                 description: fDesc.text,
                 kind: fKind.currentKey,
                 scriptType: fScriptType.currentKey,
+                scriptSource: fScriptSource.currentKey,
+                scriptBody: fScriptBody.text,
                 interpreter: fInterpreter.text,
                 path: fPath.text,
                 url: fUrl.text,
@@ -974,75 +1066,35 @@ Item {
 
     // ====== Mini macOS-styled components ======
 
-    component MacButton: Button {
+    component MacButton: UiButton {
         id: btn
-        property string variant: "secondary"
-        property bool danger: false
+        dark: root.dark
         implicitHeight: 28
-        padding: 0
         font.family: sfFont
         font.pixelSize: 12
-        background: Rectangle {
-            radius: 6
-            color: btn.variant === "primary"
-                ? (btn.down ? Qt.darker(accent, 1.1) : (btn.hovered ? Qt.lighter(accent, 1.05) : accent))
-                : (btn.danger
-                    ? (btn.hovered ? Qt.rgba(1, 0.23, 0.18, 0.16) : "transparent")
-                    : (btn.down ? Qt.rgba(0,0,0,0.08) : (btn.hovered ? rowHover : fieldBg)))
-            border.color: btn.variant === "primary" ? "transparent" : fieldBorder
-            border.width: btn.variant === "primary" ? 0 : 1
-        }
-        contentItem: Label {
-            text: btn.text
-            color: btn.variant === "primary" ? accentText : (btn.danger ? danger : textMain)
-            font: btn.font
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
     }
 
-    component MacIconButton: Button {
+    component MacIconButton: UiIconButton {
         id: ibtn
-        implicitWidth: 28
-        implicitHeight: 28
-        padding: 0
-        font.family: sfFont
-        font.pixelSize: 16
-        background: Rectangle {
-            radius: 6
-            color: ibtn.down ? Qt.rgba(0,0,0,0.08) : (ibtn.hovered ? rowHover : "transparent")
-        }
-        contentItem: Label {
-            text: ibtn.text
-            color: textMuted
-            font: ibtn.font
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
-
-    component MacChip: Rectangle {
-        id: chip
         property string text: ""
-        property color chipColor: separator
-        property color textColor: textMuted
-        implicitWidth: chipLabel.implicitWidth + 12
-        implicitHeight: 18
-        radius: 9
-        color: chipColor
-        Label {
-            id: chipLabel
-            anchors.centerIn: parent
-            text: chip.text
-            color: chip.textColor
-            font.family: sfFont
-            font.pixelSize: 10
-            font.weight: Font.Medium
-        }
+
+        dark: root.dark
+        iconName: ibtn.text.length > 0 ? "mdi6.dots-horizontal" : ""
+        tooltip: ""
+        controlSize: 28
     }
 
-    component MacTextField: TextField {
+    component MacChip: UiBadge {
+        id: chip
+        property color chipColor: separator
+        dark: root.dark
+        badgeColor: chip.chipColor
+        textColor: textMuted
+    }
+
+    component MacTextField: UiTextField {
         id: tf
+        dark: root.dark
         implicitHeight: 28
         font.family: sfFont
         font.pixelSize: 12
@@ -1063,8 +1115,9 @@ Item {
         id: ta
         property alias text: textArea.text
         property alias placeholderText: textArea.placeholderText
-        TextArea {
+        UiTextArea {
             id: textArea
+            dark: root.dark
             font.family: sfFont
             font.pixelSize: 12
             color: textMain
@@ -1080,19 +1133,10 @@ Item {
         }
     }
 
-    component MacFormRow: RowLayout {
+    component MacFormRow: UiFormRow {
         id: row
-        property string label: ""
-        Layout.fillWidth: true
-        spacing: 10
-        Label {
-            text: row.label
-            color: textMuted
-            font.family: sfFont
-            font.pixelSize: 12
-            Layout.preferredWidth: 80
-            horizontalAlignment: Text.AlignRight
-        }
+        dark: root.dark
+        labelWidth: 80
     }
 
     component MacSegmented: Rectangle {
@@ -1145,7 +1189,7 @@ Item {
         }
     }
 
-    component MacSheet: Popup {
+    component MacSheet: UiPopup {
         id: sheet
         anchors.centerIn: parent
         modal: true
@@ -1154,12 +1198,10 @@ Item {
         padding: 0
         focus: true
         closePolicy: Popup.CloseOnEscape
-        background: Rectangle {
-            radius: 12
-            color: sheetBg
-            border.color: separator
-            border.width: 1
-        }
+        dark: root.dark
+        surfaceRadius: 12
+        surfaceFillColor: sheetBg
+        surfaceBorderColor: separator
 
         property string title: ""
         property string primaryText: "确定"

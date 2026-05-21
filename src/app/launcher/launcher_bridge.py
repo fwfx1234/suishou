@@ -211,6 +211,10 @@ class LauncherBridge(QObject):
         self.hideLauncherRequested.emit()
 
     @Slot()
+    def restartApp(self) -> None:
+        self.restartRequested.emit()
+
+    @Slot()
     def checkAppIndex(self) -> None:
         self._command_service.check_app_index_changes()
 

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import ctypes
-import os
 import time
 from ctypes import wintypes
 
 from PySide6.QtCore import QAbstractNativeEventFilter, QObject, Signal, Slot
 
 from app.logging import get_logger
+from app.settings import configured_text
 
 from .keyboard_hook import LOW_LEVEL_HOTKEY_HOOK
 
@@ -212,7 +212,7 @@ class WinHotkeyManager(QObject):
         self.hotkeyPressed.emit()
 
     def _should_enable_fallback(self) -> bool:
-        value = os.getenv("PY_DESKTOP_TOOLS_HOTKEY_HOOK", "").strip().lower()
+        value = configured_text("hotkeys.windowsFallbackHook", "PY_DESKTOP_TOOLS_HOTKEY_HOOK").strip().lower()
         if value in {"1", "true", "yes", "on", "always"}:
             return True
         if value in {"0", "false", "no", "off", "never"}:

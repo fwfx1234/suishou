@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
@@ -16,8 +14,9 @@ class SystemTrayManager(QObject):
     restartRequested = Signal()
     quitRequested = Signal()
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, platform_services: object, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._platform_services = platform_services
         self._tray = QSystemTrayIcon(parent)
         self._build_icon()
         self._tray.setToolTip("桌面工具箱")
@@ -35,15 +34,21 @@ class SystemTrayManager(QObject):
         # 双击托盘图标显示窗口
         self._tray.activated.connect(self._on_activated)
 
+        # Windows 通知通道依赖托盘做兜底显示，构造完成后回填托盘引用。
+        notifications = getattr(platform_services, "notifications", None)
+        set_tray = getattr(notifications, "set_tray", None)
+        if callable(set_tray):
+            set_tray(self._tray)
+
     def _build_icon(self) -> None:
-        """使用 qtawesome 构建托盘图标。"""
         try:
             import qtawesome as qta
 
-            color = "#FFFFFF" if sys.platform == "darwin" else "#8B5CF6"
+            packaged = self._platform_services.paths.is_frozen()
+            appearance = self._platform_services.tray_appearance
+            color = appearance.icon_color(packaged=packaged)
             icon = qta.icon("fa5s.rocket", color=color)
-            if sys.platform == "darwin" and hasattr(icon, "setIsMask"):
-                icon.setIsMask(True)
+            appearance.apply_mask(icon, packaged=packaged)
             self._tray.setIcon(icon)
         except Exception:
             self._tray.setIcon(QIcon())
@@ -59,4 +64,4 @@ class SystemTrayManager(QObject):
         self._tray.hide()
 
     def show_message(self, title: str, message: str) -> None:
-        self._tray.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information)
+        self._platform_services.notifications.notify(title=title, body=message)

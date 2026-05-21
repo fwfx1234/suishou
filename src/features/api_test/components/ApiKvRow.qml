@@ -139,8 +139,9 @@ Rectangle {
             onToggled: root.enabledToggled(checked)
         }
 
-        TextField {
+        UiTextField {
             id: keyField
+            dark: root.dark
             Layout.preferredWidth: root.keyWidth
             text: root.rowData.key || ""
             hoverEnabled: true
@@ -170,21 +171,19 @@ Rectangle {
                     root.openHeaderKeyPopup()
             }
 
-            Popup {
+            UiPopup {
                 id: headerKeyPopup
+                parent: keyField
                 y: parent.height + 2
                 width: parent.width
                 padding: 0
-                modal: false
                 focus: false
                 closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
                 property var model: []
-                background: Rectangle {
-                    radius: Theme.radii.xs
-                    color: root.fieldFocusBg
-                    border.width: 1
-                    border.color: root.panelBorder
-                }
+                surfaceRadius: Theme.radii.xs
+                surfaceFillColor: root.fieldFocusBg
+                surfaceBorderColor: root.panelBorder
+
                 contentItem: Column {
                     width: headerKeyPopup.width
                     Repeater {
@@ -225,8 +224,9 @@ Rectangle {
             }
         }
 
-        TextField {
+        UiTextField {
             id: valueField
+            dark: root.dark
             Layout.fillWidth: true
             Layout.horizontalStretchFactor: root.valueWeight
             text: root.rowData.value || ""
@@ -281,21 +281,19 @@ Rectangle {
                 root.magicInsertRequested(valueText)
             }
 
-            Popup {
+            UiPopup {
                 id: headerValuePopup
+                parent: valueField
                 y: parent.height + 2
                 width: parent.width
                 padding: 0
-                modal: false
                 focus: false
                 closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
                 property var model: []
-                background: Rectangle {
-                    radius: Theme.radii.xs
-                    color: root.fieldFocusBg
-                    border.width: 1
-                    border.color: root.panelBorder
-                }
+                surfaceRadius: Theme.radii.xs
+                surfaceFillColor: root.fieldFocusBg
+                surfaceBorderColor: root.panelBorder
+
                 contentItem: Column {
                     width: headerValuePopup.width
                     Repeater {
@@ -378,8 +376,9 @@ Rectangle {
             }
         }
 
-        TextField {
+        UiTextField {
             id: descField
+            dark: root.dark
             Layout.preferredWidth: root.descWidth
             text: root.rowData.desc || ""
             hoverEnabled: true

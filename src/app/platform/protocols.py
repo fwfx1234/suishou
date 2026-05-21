@@ -123,3 +123,95 @@ class PermissionApiProtocol(Protocol):
 
     def screen_recording_status(self) -> PlatformResult:
         ...
+
+
+class PathsApiProtocol(Protocol):
+    def user_data_dir(self) -> Path:
+        ...
+
+    def cache_dir(self) -> Path:
+        ...
+
+    def db_path(self, name: str) -> Path:
+        ...
+
+    def resource_root(self) -> Path:
+        ...
+
+    def project_root(self) -> Path:
+        ...
+
+    def is_frozen(self) -> bool:
+        ...
+
+    def plugin_dirs(self) -> list[Path]:
+        ...
+
+    def downloads_dir(self) -> Path:
+        ...
+
+    def desktop_dir(self) -> Path:
+        ...
+
+    def documents_dir(self) -> Path:
+        ...
+
+    def feature_output_dir(self, feature_id: str) -> Path:
+        ...
+
+
+class TrayAppearanceProtocol(Protocol):
+    def icon_color(self, *, packaged: bool) -> str:
+        ...
+
+    def apply_mask(self, icon: object, *, packaged: bool) -> None:
+        ...
+
+
+class WindowingApiProtocol(Protocol):
+    def configure_launcher_window(self, window: object) -> bool:
+        ...
+
+    def configure_overlay_window(self, window: object, *, force_top: bool = True) -> bool:
+        ...
+
+    def activate_window(self, window: object | None = None) -> bool:
+        ...
+
+    def focused_window_center(self) -> tuple[int, int] | None:
+        ...
+
+
+class NotificationApiProtocol(Protocol):
+    def notify(self, *, title: str, body: str, success: bool | None = None) -> bool:
+        ...
+
+
+class ClipboardSubscriberProtocol(Protocol):
+    """订阅式剪贴板 backend（用于历史监听）。
+
+    与同步写型 `ClipboardApiProtocol` 共存：写操作两者都支持，
+    `ClipboardSubscriberProtocol` 额外提供 `start(on_change)` / `stop()` / `read_current()`
+    用于变更监听与历史回填。具体实现见 `app/services/clipboard/backends/`。
+    """
+
+    def start(self, on_change) -> None:
+        ...
+
+    def stop(self) -> None:
+        ...
+
+    def read_current(self):
+        ...
+
+    def write_text(self, text: str) -> None:
+        ...
+
+    def write_files(self, paths: list[str]) -> None:
+        ...
+
+    def write_image(self, path) -> None:
+        ...
+
+    def clear(self) -> None:
+        ...
