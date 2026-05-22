@@ -74,7 +74,7 @@ class ClipboardInlineSession:
         self._clipboard_view_model = view_model
 
     def create_qml_context(self) -> dict:
-        if not self.manifest.context_property:
+        if self._clipboard_view_model is None or not self.manifest.context_property:
             return {}
         return {self.manifest.context_property: self._clipboard_view_model}
 
@@ -85,6 +85,8 @@ class ClipboardInlineSession:
         return []
 
     def on_input_changed(self, text: str) -> list[dict]:
+        if self._clipboard_view_model is None:
+            return []
         self._clipboard_view_model.refreshHistory(text)
         return []
 
@@ -97,10 +99,13 @@ class ClipboardInlineSession:
         return []
 
     def reactivate(self, action) -> None:
-        if action.input_text:
+        if self._clipboard_view_model is not None and action.input_text:
             self.on_input_changed(action.input_text)
 
     def close(self) -> None:
         if self._clipboard_view_model is not None:
+            dispose = getattr(self._clipboard_view_model, "dispose", None)
+            if callable(dispose):
+                dispose()
             self._clipboard_view_model.deleteLater()
             self._clipboard_view_model = None

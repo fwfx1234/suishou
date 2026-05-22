@@ -15,12 +15,14 @@ Item {
     property var selectedItem: ({})
     property int selectedIndex: -1
     property string selectedItemId: ""
+    property string preferredSelectedItemId: ""
     property string activeFilter: "all"
     property var hostWindow: root.Window.window
     property string statusText: ""
     property bool captureTextEnabled: true
     property bool captureImageEnabled: true
     property bool captureFilesEnabled: true
+    property bool disposing: false
     readonly property int historyRowHeight: 82
     readonly property int historyCount: historyModel ? historyModel.count : 0
     readonly property bool dark: typeof app !== "undefined" && app ? app.theme === "dark" : false
@@ -43,6 +45,9 @@ Item {
     readonly property color success: dark ? "#30D158" : "#34C759"
 
     function selectItem(item, idx) {
+        if (disposing) {
+            return
+        }
         selectedItem = item || ({})
         selectedIndex = idx
         selectedItemId = item && item.id ? String(item.id) : ""
@@ -50,6 +55,9 @@ Item {
     }
 
     function indexOfItemId(itemId) {
+        if (disposing) {
+            return -1
+        }
         if (!itemId || !historyModel) {
             return -1
         }
@@ -57,6 +65,9 @@ Item {
     }
 
     function itemAtIndex(idx) {
+        if (disposing) {
+            return null
+        }
         if (!historyModel || idx < 0 || idx >= historyModel.count) {
             return null
         }
@@ -64,9 +75,21 @@ Item {
     }
 
     function refreshSelection() {
+        if (disposing) {
+            return
+        }
         if (historyCount === 0) {
             selectItem({}, -1)
             return
+        }
+        if (preferredSelectedItemId.length > 0) {
+            var preferredIndex = indexOfItemId(preferredSelectedItemId)
+            if (preferredIndex >= 0) {
+                preferredSelectedItemId = ""
+                selectItem(itemAtIndex(preferredIndex), preferredIndex)
+                historyList.positionViewAtIndex(preferredIndex, ListView.Contain)
+                return
+            }
         }
         var retainedIndex = indexOfItemId(selectedItemId)
         if (retainedIndex >= 0) {
@@ -81,6 +104,9 @@ Item {
     }
 
     function moveSelection(delta) {
+        if (disposing) {
+            return false
+        }
         if (tabs.currentIndex !== 0 || historyCount === 0) {
             return false
         }
@@ -96,6 +122,9 @@ Item {
     }
 
     function activateSelection() {
+        if (disposing || !clipboardVm) {
+            return false
+        }
         if (tabs.currentIndex !== 0 || selectedIndex < 0 || !selectedItem.id) {
             return false
         }
@@ -104,6 +133,9 @@ Item {
     }
 
     function toggleSelectedPin() {
+        if (disposing || !clipboardVm) {
+            return false
+        }
         if (tabs.currentIndex !== 0 || selectedIndex < 0 || !selectedItem.id) {
             return false
         }
@@ -112,6 +144,9 @@ Item {
     }
 
     function deleteSelection() {
+        if (disposing || !clipboardVm) {
+            return false
+        }
         if (tabs.currentIndex !== 0 || selectedIndex < 0 || !selectedItem.id) {
             return false
         }
@@ -120,12 +155,19 @@ Item {
     }
 
     function setFilter(filterType) {
+        if (disposing || !clipboardVm) {
+            return
+        }
         activeFilter = filterType || "all"
         clipboardVm.setFilterType(activeFilter)
+        preferredSelectedItemId = clipboardVm.latestVisibleItemId()
         Qt.callLater(root.focusForKeyboard)
     }
 
     function maybeLoadMore() {
+        if (disposing) {
+            return
+        }
         if (!historyModel || !historyModel.hasMore) {
             return
         }
@@ -161,6 +203,10 @@ Item {
     }
 
     function handleListKey(event) {
+        if (disposing) {
+            event.accepted = true
+            return
+        }
         if (event.key === Qt.Key_Left) {
             event.accepted = root.switchFilter(-1)
             return
@@ -183,6 +229,9 @@ Item {
     }
 
     function focusForKeyboard() {
+        if (disposing) {
+            return
+        }
         root.forceActiveFocus()
         if (tabs.currentIndex === 0) {
             searchInput.forceActiveFocus()
@@ -203,7 +252,7 @@ Item {
     }
 
     function itemIconName(item) {
-        return String((item && item.icon) || "qta:mdi6.clipboard-text-outline").replace("qta:", "")
+        return String((item && item.icon) || "qta:mdi6.clipboard-list-outline").replace("qta:", "")
     }
 
     function itemMetaLine(item) {
@@ -229,14 +278,40 @@ Item {
         return parts.join(" · ")
     }
 
+    function disposePage() {
+        if (disposing) {
+            return
+        }
+        disposing = true
+        historyList.model = null
+        detailTextEdit.text = ""
+        detailImage.source = ""
+        selectedItem = ({})
+        selectedIndex = -1
+        selectedItemId = ""
+        preferredSelectedItemId = ""
+        historyModel = null
+        root.focus = false
+        try {
+            gc()
+        } catch (e) {
+        }
+    }
+
     Component.onCompleted: {
+        if (!clipboardVm) {
+            return
+        }
         var initialQuery = clipboardVm.initialQuery()
         searchInput.text = initialQuery
         clipboardVm.refreshHistory(initialQuery)
+        preferredSelectedItemId = clipboardVm.latestVisibleItemId()
         clipboardVm.loadConfig()
         tabs.currentIndex = clipboardVm.initialPanel() === "settings" ? 1 : 0
         Qt.callLater(root.focusForKeyboard)
     }
+
+    Component.onDestruction: root.disposePage()
 
     onVisibleChanged: {
         if (visible) {
@@ -332,7 +407,7 @@ Item {
                     anchors.centerIn: parent
                     width: 18
                     height: 18
-                    name: "mdi6.clipboard-text-outline"
+                    name: "mdi6.clipboard-list-outline"
                     color: selectedStrongBg
                     iconSize: 18
                 }
@@ -440,7 +515,10 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 34
                             placeholderText: "搜索历史、链接、文件名"
-                            onTextChanged: clipboardVm.refreshHistory(text)
+                            onTextChanged: {
+                                clipboardVm.refreshHistory(text)
+                                root.preferredSelectedItemId = clipboardVm.latestVisibleItemId()
+                            }
 
                             Keys.priority: Keys.BeforeItem
                             Keys.onUpPressed: function(event) {
@@ -831,6 +909,7 @@ Item {
                                 }
 
                                 Image {
+                                    id: detailImage
                                     visible: selectedItem.itemType === "image"
                                     anchors.fill: parent
                                     source: selectedItem.imageUrl || ""

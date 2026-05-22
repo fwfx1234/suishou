@@ -14,6 +14,7 @@ from app.app_view_model import AppViewModel
 from app.commands.command_index_db import CommandIndexDb
 from app.commands.command_service import CommandService
 from app.commands.dynamic_command_registry import DynamicCommandRegistry
+from app.diagnostics import MemoryProbe, install_periodic_snapshot, snapshot
 from app.launcher.launcher_bridge import LauncherBridge
 from app.launcher_runtime_coordinator import LauncherRuntimeCoordinator
 from app.platform.services import PlatformServices
@@ -23,6 +24,7 @@ from app.plugins.manifest import PluginManifest
 from app.plugins.plugin_manager import PluginManager
 from app.plugins.runtime import PluginContext
 from app.plugins.session_manager import PluginSessionManager
+from app.settings import configured_bool, configured_int
 from app.storage import StorageManager
 from app.tray_coordinator import TrayCoordinator
 
@@ -53,6 +55,7 @@ class ApplicationContext:
     launcher_window: object | None = None
     _shutting_down: bool = field(default=False, init=False)
     _app_index_refresh_timer: QTimer | None = field(default=None, init=False)
+    _memory_probe_timer: QTimer | None = field(default=None, init=False)
 
     def start(self) -> None:
         started_at = perf_counter()
@@ -69,12 +72,24 @@ class ApplicationContext:
         QTimer.singleShot(100, self.runtime_coordinator.start_background_plugins)
         QTimer.singleShot(250, self._start_initial_app_index_scan)
         self._schedule_app_index_refresh()
+        self._install_memory_probe()
         self.log.debug("app.context.start_scheduled", "后台插件启动已调度", elapsedMs=int((perf_counter() - started_at) * 1000))
 
     def shutdown(self) -> None:
         if self._shutting_down:
             return
         self._shutting_down = True
+        try:
+            self.log.debug("app.memory.shutdown", "应用退出前内存快照", **snapshot(
+                sessions_count=len(getattr(self.session_manager, "_sessions", {}) or {}),
+                windows_count=len(getattr(self.surface_coordinator, "_windows", {}) or {}),
+            ))
+        except Exception:
+            pass
+        if self._memory_probe_timer is not None:
+            self._memory_probe_timer.stop()
+            self._memory_probe_timer.deleteLater()
+            self._memory_probe_timer = None
         if self._app_index_refresh_timer is not None:
             self._app_index_refresh_timer.stop()
             self._app_index_refresh_timer.deleteLater()
@@ -86,6 +101,32 @@ class ApplicationContext:
         self.plugin_manager.close_all()
         self.command_service.shutdown()
         self.command_index.close()
+
+    def _install_memory_probe(self) -> None:
+        interval_ms = configured_int(
+            "diagnostics.memorySnapshotMs", ("SUISHOU_MEM_SNAPSHOT_MS", "PY_DESKTOP_MEM_SNAPSHOT_MS"), 0
+        )
+        if interval_ms <= 0:
+            return
+        include_qobject_top = bool(
+            configured_bool(
+                "diagnostics.memoryQObjectStats", ("SUISHOU_MEM_QOBJECT_STATS", "PY_DESKTOP_MEM_QOBJECT_STATS"), False
+            )
+        )
+        probe = MemoryProbe(
+            session_manager=self.session_manager,
+            surface_coordinator=self.surface_coordinator,
+            include_qobject_top=include_qobject_top,
+        )
+        self._memory_probe_timer = install_periodic_snapshot(
+            self.qt_app, probe, interval_ms, log=self.log.debug
+        )
+        self.log.debug(
+            "app.memory.probe_installed",
+            "内存探针已安装",
+            intervalMs=interval_ms,
+            includeQObjectTop=include_qobject_top,
+        )
 
     def _start_initial_app_index_scan(self) -> None:
         started = self.command_service.check_app_index_changes(force=True)

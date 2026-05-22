@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import gc
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from app.storage import SQLiteDatabase
@@ -845,7 +846,50 @@ class ApiTestViewModel(QObject):
             self._emit_tabs_and_editor_changed()
 
     def dispose(self) -> None:
+        if self._disposed:
+            return
         self._disposed = True
         self._sender.dispose()
-        if self._service:
-            self._service.close()
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
+        self._tabs.items.clear()
+        self._tabs.current_index = -1
+        self._editor.query_params.clear()
+        self._editor.path_params.clear()
+        self._editor.body_per_mode.clear()
+        self._editor.body_form_rows.clear()
+        self._editor.body_text = ""
+        self._editor.body_file_path = ""
+        self._editor.body_file_param_name = ""
+        self._editor.headers_rows.clear()
+        self._editor.cookie_rows.clear()
+        self._editor.auth_value_text = ""
+        self._editor.cookies_text = ""
+        self._editor.pre_ops_text = ""
+        self._editor.post_ops_text = ""
+        self._editor.ws_encoding = ""
+        self._ws_status_by_tab.clear()
+        self._ws_timeline.clear()
+        self._debug_cases.items.clear()
+        self._debug_cases.selected_ids.clear()
+        self._collection_tree.clear()
+        self._environments.items.clear()
+        self._environments.current_index = -1
+        self._api_history.clear()
+        self._response.clear()
+        self._emit_disposed_state()
+        self._service.close()
+
+    def _emit_disposed_state(self) -> None:
+        self.tabsChanged.emit()
+        self.editorChanged.emit()
+        self.wsTimelineChanged.emit()
+        self.debugCasesChanged.emit()
+        self.collectionDataChanged.emit()
+        self.environmentsChanged.emit()
+        self.apiHistoryChanged.emit()
+        self.responseChanged.emit()
+        self.wsStatusChanged.emit()
+        gc.collect()

@@ -34,6 +34,15 @@ class WindowsWindowingApi:
         except Exception:
             return False
 
+    def activate_launcher_window(self, window: object) -> bool:
+        return self.activate_window(window)
+
+    def activate_overlay_window(self, window: object) -> bool:
+        return self.activate_window(window)
+
+    def should_request_qt_activation(self) -> bool:
+        return True
+
     def focused_window_center(self) -> tuple[int, int] | None:
         try:
             import win32gui  # type: ignore

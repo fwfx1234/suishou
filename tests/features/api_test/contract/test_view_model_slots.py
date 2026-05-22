@@ -170,3 +170,56 @@ class TestApiTestViewModelProperties:
         ]
         for signal_name in expected_signals:
             assert hasattr(vm_class, signal_name), f"Missing Signal: {signal_name}"
+
+
+class TestApiTestViewModelLifecycle:
+    def test_dispose_clears_heavy_state(self, sqlite_database) -> None:
+        from features.api_test.view_model import ApiTestViewModel
+
+        vm = ApiTestViewModel(sqlite_database)
+        vm._tabs.items = [{"id": "tab-1"}]
+        vm._tabs.current_index = 0
+        vm._editor.query_params = [{"key": "q", "value": "1"}]
+        vm._editor.path_params = [{"key": "id", "value": "1"}]
+        vm._editor.body_per_mode = {"JSON": '{"ok": true}'}
+        vm._editor.body_form_rows = [{"key": "name", "value": "alice"}]
+        vm._editor.body_file_param_name = "upload"
+        vm._editor.auth_value_text = "secret"
+        vm._editor.ws_encoding = "base64"
+        vm._collection_tree = [{"id": "node-1"}]
+        vm._api_history = [{"url": "/"}]
+        vm._environments.items = [{"name": "prod"}]
+        vm._debug_cases.items = [{"id": "case-1"}]
+        vm._debug_cases.selected_ids = ["case-1"]
+        vm._ws_status_by_tab = {"tab-1": {"status": "connected", "message": "ok"}}
+        vm._ws_timeline = [{"content": "msg"}]
+        vm._response.apply("状态: 200", '{"ok": true}', {"requestLogText": "x"})
+
+        vm.dispose()
+
+        assert vm._disposed is True
+        assert vm._tabs.items == []
+        assert vm._tabs.current_index == -1
+        assert vm._editor.query_params == []
+        assert vm._editor.path_params == []
+        assert vm._editor.body_per_mode == {}
+        assert vm._editor.body_form_rows == []
+        assert vm._editor.body_text == ""
+        assert vm._editor.body_file_path == ""
+        assert vm._editor.body_file_param_name == ""
+        assert vm._editor.headers_rows == []
+        assert vm._editor.cookie_rows == []
+        assert vm._editor.auth_value_text == ""
+        assert vm._editor.ws_encoding == ""
+        assert vm._ws_status_by_tab == {}
+        assert vm._ws_timeline == []
+        assert vm._debug_cases.items == []
+        assert vm._debug_cases.selected_ids == []
+        assert vm._environments.items == []
+        assert vm._environments.current_index == -1
+        assert vm._collection_tree == []
+        assert vm._api_history == []
+        assert vm._response.body_text == ""
+        assert vm._response.log_entries == []
+        assert vm._service._database is None
+        assert vm._service._collections is None

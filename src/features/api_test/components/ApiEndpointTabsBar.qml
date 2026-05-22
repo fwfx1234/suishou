@@ -52,6 +52,17 @@ Rectangle {
         return environments[idx].name || "无环境"
     }
 
+    function disposePage() {
+        endpointTabs = []
+        environments = []
+        currentEndpointTab = -1
+        currentEnvIndex = -1
+        methodColorFn = null
+        envTagFn = null
+        envTagColorFn = null
+        endpointTabsFlick.contentX = 0
+    }
+
     color: root.panelBg
 
     RowLayout {

@@ -25,6 +25,7 @@ ColumnLayout {
     property bool showMagicPanel: false
     property string currentMethod: "GET"
     property var methodColorFn: null
+    property bool releasing: false
 
     signal tabSelected(int index)
     signal fileBrowseClicked()
@@ -99,6 +100,26 @@ ColumnLayout {
             (root.vm.postOpsText || "").trim().length > 0 ? 1 : 0,
             0
         ]
+    }
+
+    function insertScriptMagic(loader, valueText, fieldName) {
+        var item = loader && loader.item ? loader.item : null
+        if (item && item.insertMagic) {
+            item.insertMagic(valueText)
+            return
+        }
+        if (!root.backend || !fieldName)
+            return
+        var current = root.vm ? (root.vm[fieldName] || "") : ""
+        root.backend[fieldName] = current + valueText
+    }
+
+    function disposePage() {
+        releasing = true
+        backend = null
+        vm = null
+        showMagicPanel = false
+        activeBodyRow = -1
     }
 
     ApiRequestTabsBar {

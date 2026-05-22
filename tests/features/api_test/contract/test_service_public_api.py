@@ -84,6 +84,17 @@ class TestApiTestServicePublicApi:
         service.close()
         service.close()  # second call should also be safe
 
+    def test_close_drops_lazy_services_and_history(self, service) -> None:
+        service._history.append({"method": "GET", "url": "/", "status": 200})
+        service._http_service = object()
+        service._ws_service = None
+
+        service.close()
+
+        assert service._history == []
+        assert service._http_service is None
+        assert service._ws_service is None
+
 
 class TestHttpRequestServicePublicApi:
     def test_send_signature(self) -> None:

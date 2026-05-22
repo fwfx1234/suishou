@@ -18,10 +18,13 @@ Item {
     property int activeBodyRow: -1
     property bool showMagicPanel: false
     property bool applyingTabToActionBar: false
+    property bool disposing: false
+    property var releasedRows: []
+    property string releasedText: ""
     readonly property var vm: apiTestVm
     readonly property var appVm: app
 
-    enabled: !!apiTestVm
+    enabled: !!apiTestVm && !disposing
 
     readonly property bool dark: appVm ? appVm.theme === "dark" : false
     readonly property color panelBg: Theme.token("color-bg-surface", dark)
@@ -32,30 +35,30 @@ Item {
     readonly property color textSubtle: Theme.token("color-text-secondary", dark)
     readonly property color tableHeaderBg: Theme.token("color-table-header", dark)
     readonly property color softBorder: Qt.rgba(panelBorder.r, panelBorder.g, panelBorder.b, 0.55)
-    readonly property var emptyRows: []
-    readonly property var endpointTabsModel: vm ? vm.endpointTabs : emptyRows
+    readonly property var emptyRows: disposing ? releasedRows : []
+    readonly property var endpointTabsModel: (!disposing && vm) ? vm.endpointTabs : emptyRows
     readonly property int currentEndpointTabIndex: vm ? vm.currentEndpointTab : -1
-    readonly property var environmentsModel: vm ? vm.environments : emptyRows
+    readonly property var environmentsModel: (!disposing && vm) ? vm.environments : emptyRows
     readonly property int currentEnvironmentIndex: vm ? vm.currentEnvIndex : 0
-    readonly property var collectionTreeModel: vm ? vm.collectionTree : emptyRows
-    readonly property bool requestSendingValue: vm ? vm.requestSending : false
-    readonly property string wsStatusValue: vm ? vm.wsStatus : "idle"
-    readonly property string wsStatusTextValue: vm ? vm.wsStatusText : "未连接"
-    readonly property string wsEncodingValue: vm ? vm.wsEncoding : "text"
-    readonly property bool mockModeValue: vm ? vm.mockMode : false
-    readonly property bool assertionsEnabledValue: vm ? vm.assertionsEnabled : true
-    readonly property string responseTitleValue: vm ? vm.responseTitle : "返回响应"
-    readonly property string responseStatusCodeValue: vm ? vm.responseStatusCode : ""
-    readonly property string responseElapsedMsValue: vm ? vm.responseElapsedMs : ""
-    readonly property string responseFinalUrlValue: vm ? vm.responseFinalUrl : ""
-    readonly property string responseOutcomeValue: vm ? vm.responseOutcome : "idle"
-    readonly property string responseBodyValue: vm ? vm.responseBody : ""
-    readonly property string responseBodyHtmlValue: vm ? vm.responseBodyHtml : ""
-    readonly property string responseHeadersValue: vm ? vm.responseHeaders : ""
-    readonly property string responseRequestValue: vm ? vm.responseRequest : ""
-    readonly property string responseCurlValue: vm ? vm.responseCurl : ""
-    readonly property string responseLogValue: vm ? vm.responseLog : ""
-    readonly property var responseLogsModel: vm ? vm.responseLogs : emptyRows
+    readonly property var collectionTreeModel: (!disposing && vm) ? vm.collectionTree : emptyRows
+    readonly property bool requestSendingValue: (!disposing && vm) ? vm.requestSending : false
+    readonly property string wsStatusValue: (!disposing && vm) ? vm.wsStatus : "idle"
+    readonly property string wsStatusTextValue: (!disposing && vm) ? vm.wsStatusText : "未连接"
+    readonly property string wsEncodingValue: (!disposing && vm) ? vm.wsEncoding : "text"
+    readonly property bool mockModeValue: (!disposing && vm) ? vm.mockMode : false
+    readonly property bool assertionsEnabledValue: (!disposing && vm) ? vm.assertionsEnabled : true
+    readonly property string responseTitleValue: (!disposing && vm) ? vm.responseTitle : "返回响应"
+    readonly property string responseStatusCodeValue: (!disposing && vm) ? vm.responseStatusCode : releasedText
+    readonly property string responseElapsedMsValue: (!disposing && vm) ? vm.responseElapsedMs : releasedText
+    readonly property string responseFinalUrlValue: (!disposing && vm) ? vm.responseFinalUrl : releasedText
+    readonly property string responseOutcomeValue: (!disposing && vm) ? vm.responseOutcome : "idle"
+    readonly property string responseBodyValue: (!disposing && vm) ? vm.responseBody : releasedText
+    readonly property string responseBodyHtmlValue: (!disposing && vm) ? vm.responseBodyHtml : releasedText
+    readonly property string responseHeadersValue: (!disposing && vm) ? vm.responseHeaders : releasedText
+    readonly property string responseRequestValue: (!disposing && vm) ? vm.responseRequest : releasedText
+    readonly property string responseCurlValue: (!disposing && vm) ? vm.responseCurl : releasedText
+    readonly property string responseLogValue: (!disposing && vm) ? vm.responseLog : releasedText
+    readonly property var responseLogsModel: (!disposing && vm) ? vm.responseLogs : emptyRows
 
     // ---- helpers that need QML element access ----
     function currentTabId() {
@@ -94,7 +97,7 @@ Item {
 
     // ---- actions that assemble QML data → ViewModel ----
     function sendCurrent() {
-        if (!apiTestVm || root.requestSendingValue) return
+        if (disposing || !apiTestVm || root.requestSendingValue) return
         apiTestVm.persistCurrentTabDraft()
         apiTestVm.sendRequest({
             method: requestActionBar.getMethodText(),
@@ -123,7 +126,7 @@ Item {
         return vm.bodyText
     }
     function saveCurrentAsDebugCase() {
-        if (!apiTestVm) return
+        if (disposing || !apiTestVm) return
         var tab = root.endpointTabsModel[root.currentEndpointTabIndex] || {}
         apiTestVm.saveDebugCaseData({
             endpointKey: endpointKey(), caseId: "",
@@ -149,6 +152,8 @@ Item {
         return (idx >= 0 && idx < modes.length) ? modes[idx] : "none"
     }
     function syncRequestActionBarFromCurrentTab() {
+        if (disposing)
+            return
         var idx = root.currentEndpointTabIndex
         if (idx < 0 || idx >= root.endpointTabsModel.length) return
         var tab = root.endpointTabsModel[idx] || {}
@@ -161,7 +166,7 @@ Item {
         root.applyingTabToActionBar = false
     }
     function updateCurrentTreeEndpoint(methodText, pathText) {
-        if (root.applyingTabToActionBar || !apiTestVm) return
+        if (disposing || root.applyingTabToActionBar || !apiTestVm) return
         var tab = root.endpointTabsModel[root.currentEndpointTabIndex]
         if (!tab) return
         apiTestVm.updateCurrentTabRequest(methodText || "GET", pathText || "/")
@@ -174,15 +179,15 @@ Item {
         apiTestVm.loadCollectionTree()
     }
     function connectWs() {
-        if (!apiTestVm) return
+        if (disposing || !apiTestVm) return
         apiTestVm.wsConnect(currentTabId(), root.currentRequestUrl(),
             ApiUtils.buildKvText(vm.queryParams), ApiUtils.buildHeaderText(vm.headersRows),
             ApiUtils.buildCookieText(vm.cookieRows), currentEnvBaseUrl())
     }
-    function disconnectWs() { if (apiTestVm) apiTestVm.wsDisconnect(currentTabId()) }
-    function receiveWs() { if (apiTestVm) apiTestVm.wsReceive(currentTabId()) }
+    function disconnectWs() { if (!disposing && apiTestVm) apiTestVm.wsDisconnect(currentTabId()) }
+    function receiveWs() { if (!disposing && apiTestVm) apiTestVm.wsReceive(currentTabId()) }
     function restoreHistoryRequest(methodText, urlText) {
-        if (!apiTestVm) return
+        if (disposing || !apiTestVm) return
         apiTestVm.updateCurrentTabRequest(methodText || "GET", urlText || "/")
         requestActionBar.setMethodText(methodText || "GET")
         requestActionBar.setPathText(urlText || "/")
@@ -216,6 +221,27 @@ Item {
         return root.wsStatusTextValue
     }
 
+    function disposePage() {
+        if (disposing)
+            return
+        disposing = true
+        showMagicPanel = false
+        activeBodyRow = -1
+        collectionSidebar.disposePage()
+        requestPanel.disposePage()
+        responsePanel.disposePage()
+        endpointTabsBar.disposePage()
+        envPopup.close()
+        tabActionsMenu.close()
+        envDialog.disposePage()
+        openApiDialog.close()
+        fileDialog.close()
+        try {
+            gc()
+        } catch (e) {
+        }
+    }
+
     // ---- background ----
     Rectangle { anchors.fill: parent; color: root.panelBg }
 
@@ -223,6 +249,8 @@ Item {
         if (!apiTestVm) return
         apiTestVm.loadInitialData()
     }
+
+    Component.onDestruction: root.disposePage()
 
     onCurrentTabChanged: { root.showMagicPanel = false }
 

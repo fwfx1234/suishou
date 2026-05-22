@@ -231,6 +231,35 @@ class ClipboardHistoryStore:
                 ).fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    def latest_matching_item(self, query: str = "", *, filter_type: str = "all") -> dict | None:
+        q = query.strip()
+        filter_value = str(filter_type or "all")
+        conditions: list[str] = []
+        params: list[object] = []
+        if filter_value == "pinned":
+            conditions.append("pinned = 1")
+        elif filter_value in {"text", "image", "files"}:
+            conditions.append("item_type = ?")
+            params.append(filter_value)
+        if q:
+            like = f"%{q}%"
+            conditions.append("(content LIKE ? OR preview LIKE ?)")
+            params.extend([like, like])
+        where_sql = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        with self._lock:
+            with self._database.connection(row_factory=SQLiteRow) as conn:
+                row = conn.execute(
+                    f"""
+                    SELECT id, item_type, content, preview, metadata, pinned, created_at
+                    FROM clipboard_history
+                    {where_sql}
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    tuple(params),
+                ).fetchone()
+        return self._row_to_dict(row) if row is not None else None
+
     def count(self, query: str = "", *, filter_type: str = "all") -> int:
         q = query.strip()
         filter_value = str(filter_type or "all")

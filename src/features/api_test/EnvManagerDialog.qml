@@ -104,6 +104,17 @@ Dialog {
         dialog.selectedIndex = Math.max(0, Math.min(dialog.currentEnvIndex, next.length - 1))
     }
 
+    function disposePage() {
+        autoSaveTimer.stop()
+        close()
+        environments = []
+        draftEnvironments = []
+        selectedIndex = -1
+        detailTab = 0
+        activeRowEditor = null
+        activeFieldEditor = null
+    }
+
     function currentEnvironment() {
         if (dialog.draftEnvironments.length === 0)
             return blankEnvironment(0)

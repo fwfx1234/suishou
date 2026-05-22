@@ -1,0 +1,390 @@
+{
+  "icons": {
+    "fa5s.bolt": {
+      "height": 512,
+      "width": 512
+    },
+    "fa5s.rocket": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.alert-circle-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.api": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.application-cog-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.application-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.arrow-down-bold": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.arrow-right": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.arrow-up": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.arrow-up-bold": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.broom": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.calculator": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.chart-bar": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.check": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.check-bold": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.check-circle-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.check-decagram-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.chevron-down": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.chevron-left": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.chevron-right": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.chevron-up": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.clipboard-list-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.clipboard-text-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.close": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.close-box-multiple-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.cloud-upload-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.code-json": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.cog": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.cog-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.connection": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.console": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.console-line": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.console-network-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.content-copy": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.cookie-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.database-search-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.delete-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.delete-sweep-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.dots-horizontal": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.download": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.email-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.emoticon-happy-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.file-document-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.file-multiple-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.file-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.filter-variant": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.folder": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.folder-network-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.folder-open-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.format-header-pound": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.heart": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.help-circle-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.history": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.home-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.image-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.image-size-select-large": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.laptop": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.lightning-bolt-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.link-variant": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.magic-staff": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.magnify-close": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.open-in-new": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.package-variant": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.palette-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.pin": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.pin-off-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.pin-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.play": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.playlist-edit": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.plus": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.power": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.progress-clock": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.qrcode": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.qrcode-scan": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.refresh": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.restart": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.school-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.send": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.send-clock-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.send-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.server-network": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.shield-key-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.star": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.stethoscope": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.stop": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.tab-remove": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.text-box-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.text-box-search-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.thumb-up-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.trash-can-outline": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.tune-variant": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.unfold-less-horizontal": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.unfold-more-horizontal": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.upload": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.variable": {
+      "height": 512,
+      "width": 512
+    },
+    "mdi6.view-list-outline": {
+      "height": 512,
+      "width": 512
+    }
+  },
+  "renderColor": "#000000",
+  "renderSize": 256
+}

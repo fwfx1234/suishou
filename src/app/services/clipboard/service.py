@@ -87,6 +87,9 @@ class ClipboardService:
     def latest_item(self) -> dict | None:
         return self.store.latest_item()
 
+    def latest_matching_item(self, query: str = "", *, filter_type: str = "all") -> dict | None:
+        return self.store.latest_matching_item(query, filter_type=filter_type)
+
     def latest_captured_item(self) -> dict | None:
         return self.store.latest_captured_item()
 
@@ -225,6 +228,9 @@ class ClipboardService:
         except Exception as exc:
             self._log.warning("clipboard.backend.stop_failed", "剪切板 backend 停止失败", error=str(exc))
         self.store.close()
+        with self._listener_lock:
+            self._history_listeners.clear()
+            self._config_listeners.clear()
         self._started = False
         self._log.debug("clipboard.service.stop", "剪切板服务停止")
 

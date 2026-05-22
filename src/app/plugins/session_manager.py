@@ -33,9 +33,9 @@ RetentionExpiredCallback = Callable[[str, SessionState], None]
 
 
 def _retention_interval_ms() -> int:
-    """Read the retention interval from env for debugging, otherwise use 5 minutes."""
+    """Read the retention interval from env for debugging, otherwise use 1 minute."""
 
-    value = configured_int("plugins.retentionMs", ("SUISHOU_PLUGIN_RETENTION_MS", "PY_DESKTOP_PLUGIN_RETENTION_MS"), 300_000)
+    value = configured_int("plugins.retentionMs", ("SUISHOU_PLUGIN_RETENTION_MS", "PY_DESKTOP_PLUGIN_RETENTION_MS"), 60_000)
     return max(1_000, value)
 
 
@@ -194,6 +194,7 @@ class PluginSessionManager:
             traceId=action.trace_id,
             launchMode=session.launch_mode,
             state=record.state,
+            sessionsCount=len(self._sessions),
         )
         return session
 
@@ -316,6 +317,7 @@ class PluginSessionManager:
                 "卸载插件会话",
                 pluginId=plugin_id,
                 sessionId=record.session_id,
+                sessionsCount=len(self._sessions),
             )
         elif manifest is not None and manifest.context_property:
             self._qml_context.setContextProperty(manifest.context_property, None)
@@ -488,6 +490,7 @@ class PluginSessionManager:
             pluginId=plugin_id,
             sessionId=record.session_id,
             state=expired_state,
+            sessionsCount=len(self._sessions),
         )
         if self._on_retention_expired is not None:
             self._on_retention_expired(plugin_id, expired_state)

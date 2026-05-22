@@ -29,12 +29,13 @@ class ClipboardHistoryModel(QAbstractListModel):
 
     def __init__(self, service: ClipboardService, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._service = service
+        self._service: ClipboardService | None = service
         self._items: list[dict] = []
         self._query = ""
         self._filter = "all"
         self._has_more = True
         self._latest_id = 0
+        self._disposed = False
 
     def roleNames(self) -> dict:
         return {_ItemRole: QByteArray(b"item")}
@@ -57,7 +58,7 @@ class ClipboardHistoryModel(QAbstractListModel):
     def canFetchMore(self, parent: QModelIndex = QModelIndex()) -> bool:
         if parent.isValid():
             return False
-        return self._has_more
+        return self._has_more and not self._disposed
 
     def fetchMore(self, parent: QModelIndex = QModelIndex()) -> None:
         if parent.isValid():
@@ -104,6 +105,9 @@ class ClipboardHistoryModel(QAbstractListModel):
         return self._items[idx]
 
     def reset(self, query: str, filter_type: str) -> None:
+        if self._disposed or self._service is None:
+            self.clear()
+            return
         self.beginResetModel()
         self._items.clear()
         self._query = query
@@ -117,6 +121,8 @@ class ClipboardHistoryModel(QAbstractListModel):
         self._fetch_next_page()
 
     def apply_history_changed(self) -> None:
+        if self._disposed or self._service is None:
+            return
         latest = self._service.latest_item()
         if latest is None:
             return
@@ -184,10 +190,22 @@ class ClipboardHistoryModel(QAbstractListModel):
         self.countChanged.emit()
         self.hasMoreChanged.emit()
 
-    def _fetch_next_page(self) -> None:
-        if not self._has_more:
+    def dispose(self) -> None:
+        if self._disposed:
             return
-        rows = self._service.search(
+        self._disposed = True
+        self.clear()
+        self._query = ""
+        self._filter = "all"
+        self._latest_id = 0
+        self._service = None
+        self.activeFilterChanged.emit()
+
+    def _fetch_next_page(self) -> None:
+        service = self._service
+        if self._disposed or service is None or not self._has_more:
+            return
+        rows = service.search(
             self._query,
             filter_type=self._filter,
             offset=len(self._items),
@@ -232,6 +250,8 @@ class ClipboardHistoryModel(QAbstractListModel):
         return len(self._items)
 
     def _fetch_latest_db_id(self) -> int:
+        if self._service is None:
+            return 0
         latest = self._service.latest_item()
         if latest is None:
             return 0
@@ -256,16 +276,17 @@ class ClipboardWindowViewModel(QObject):
         initial_query: str = "",
     ) -> None:
         super().__init__()
-        self._service = service
+        self._service: ClipboardService | None = service
         self._query = initial_query
         self._initial_panel = initial_panel
         self._filter_type = "all"
-        self._history_model = ClipboardHistoryModel(service, self)
+        self._history_model: ClipboardHistoryModel | None = ClipboardHistoryModel(service, self)
+        self._disposed = False
         self._service.add_history_listener(self._on_history_changed)
         self._service.add_config_listener(self._emit_config)
 
     @Property(QObject, notify=historyModelChanged)
-    def historyModel(self) -> ClipboardHistoryModel:
+    def historyModel(self) -> ClipboardHistoryModel | None:
         return self._history_model
 
     @Slot(result=str)
@@ -278,11 +299,24 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot(str)
     def refreshHistory(self, query: str = "") -> None:
+        if self._disposed or self._history_model is None:
+            return
         self._query = query
         self._history_model.reset(self._query, self._filter_type)
 
+    @Slot(result=str)
+    def latestVisibleItemId(self) -> str:
+        if self._disposed or self._service is None:
+            return ""
+        latest = self._service.latest_matching_item(self._query, filter_type=self._filter_type)
+        if latest is None:
+            return ""
+        return str(latest.get("id") or "")
+
     @Slot(str)
     def setFilterType(self, filter_type: str) -> None:
+        if self._disposed or self._history_model is None:
+            return
         value = str(filter_type or "all")
         if value not in {"all", "pinned", "text", "image", "files"}:
             value = "all"
@@ -293,10 +327,14 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot()
     def loadConfig(self) -> None:
+        if self._disposed or self._service is None:
+            return
         self._emit_config()
 
     @Slot(str)
     def copyItem(self, item_id: str) -> None:
+        if self._disposed or self._service is None:
+            return
         db_id = self._parse_id(item_id)
         if db_id is None:
             return
@@ -307,6 +345,8 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot(str)
     def togglePin(self, item_id: str) -> None:
+        if self._disposed or self._service is None or self._history_model is None:
+            return
         db_id = self._parse_id(item_id)
         if db_id is None:
             return
@@ -316,6 +356,8 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot(str)
     def deleteItem(self, item_id: str) -> None:
+        if self._disposed or self._service is None or self._history_model is None:
+            return
         db_id = self._parse_id(item_id)
         if db_id is None:
             return
@@ -325,12 +367,16 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot()
     def clearHistory(self) -> None:
+        if self._disposed or self._service is None or self._history_model is None:
+            return
         if self._service.clear_all():
             self._history_model.clear()
         self.messageChanged.emit("剪切板历史已清空")
 
     @Slot()
     def clearUnpinned(self) -> None:
+        if self._disposed or self._service is None or self._history_model is None:
+            return
         if self._service.clear_unpinned():
             self._history_model.remove_unpinned()
             self.messageChanged.emit("未置顶记录已清空")
@@ -339,18 +385,26 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot(bool)
     def setCaptureText(self, value: bool) -> None:
+        if self._disposed or self._service is None:
+            return
         self._service.set_config_value("capture_text", bool(value))
 
     @Slot(bool)
     def setCaptureImage(self, value: bool) -> None:
+        if self._disposed or self._service is None:
+            return
         self._service.set_config_value("capture_image", bool(value))
 
     @Slot(bool)
     def setCaptureFiles(self, value: bool) -> None:
+        if self._disposed or self._service is None:
+            return
         self._service.set_config_value("capture_files", bool(value))
 
     @Slot(str)
     def saveIgnorePatterns(self, text: str) -> None:
+        if self._disposed or self._service is None:
+            return
         patterns = [
             part.strip()
             for part in re.split(r"[|\n]", text)
@@ -361,11 +415,15 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot()
     def clearIgnorePatterns(self) -> None:
+        if self._disposed or self._service is None:
+            return
         self._service.set_config_value("ignore_patterns", [])
         self.messageChanged.emit("过滤规则已清空")
 
     @Slot(str)
     def saveMaxTextChars(self, text: str) -> None:
+        if self._disposed or self._service is None:
+            return
         try:
             max_chars = max(0, int(text.strip()))
         except ValueError:
@@ -376,6 +434,8 @@ class ClipboardWindowViewModel(QObject):
 
     @Slot(str)
     def saveHotkey(self, text: str) -> None:
+        if self._disposed or self._service is None:
+            return
         hotkey = normalize_hotkey(text)
         if not hotkey:
             self.messageChanged.emit("快捷键格式无效")
@@ -384,17 +444,38 @@ class ClipboardWindowViewModel(QObject):
         self.messageChanged.emit(f"剪切板快捷键已保存为 {hotkey}")
 
     def close(self) -> None:
-        self._service.remove_history_listener(self._on_history_changed)
-        self._service.remove_config_listener(self._emit_config)
+        self.dispose()
+
+    def dispose(self) -> None:
+        if self._disposed:
+            return
+        self._disposed = True
+        service = self._service
+        if service is not None:
+            service.remove_history_listener(self._on_history_changed)
+            service.remove_config_listener(self._emit_config)
+        history_model = self._history_model
+        if history_model is not None:
+            history_model.dispose()
+            history_model.setParent(None)
+            history_model.deleteLater()
+        self._history_model = None
+        self._service = None
+        self._query = ""
+        self.historyModelChanged.emit()
 
     def deleteLater(self) -> None:
-        self.close()
+        self.dispose()
         super().deleteLater()
 
     def _on_history_changed(self) -> None:
+        if self._disposed or self._history_model is None:
+            return
         self._history_model.apply_history_changed()
 
     def _emit_config(self) -> None:
+        if self._disposed or self._service is None:
+            return
         config = self._service.get_config()
         self.configChanged.emit(
             {

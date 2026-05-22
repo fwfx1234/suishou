@@ -250,6 +250,11 @@ class RequestSenderCoordinator:
             self._disposed = True
             self._active_request_id = ""
             self._sending = False
+        self._on_response = _noop_response
+        self._on_history = _noop_history
+        self._on_sending = _noop_sending
+        self._on_ws_timeline = None
+        self._on_ws_status = None
         self._runner.shutdown(wait=False)
 
     def _begin_request(self) -> str:
@@ -377,3 +382,15 @@ class RequestSenderCoordinator:
             if header_key == target:
                 return True
         return False
+
+
+def _noop_response(title: str, body: str, details: dict) -> None:
+    del title, body, details
+
+
+def _noop_history(items: list[dict]) -> None:
+    del items
+
+
+def _noop_sending(sending: bool) -> None:
+    del sending

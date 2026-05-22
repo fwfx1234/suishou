@@ -4,8 +4,24 @@ from ctypes import c_void_p
 
 
 class MacOSWindowingApi:
+    def configure_overlay_panel_window(self, window: object, *, force_top: bool = True) -> bool:
+        ns_window = self._ns_window(window)
+        if ns_window is None:
+            return False
+        configured = self.configure_overlay_window(window, force_top=force_top)
+        try:
+            import AppKit  # type: ignore
+
+            non_activating = int(getattr(AppKit, "NSWindowStyleMaskNonactivatingPanel", 0))
+            if non_activating and hasattr(ns_window, "setStyleMask_"):
+                style_mask = int(ns_window.styleMask())
+                ns_window.setStyleMask_(style_mask | non_activating)
+            return True
+        except Exception:
+            return configured
+
     def configure_launcher_window(self, window: object) -> bool:
-        return self.configure_overlay_window(window, force_top=True)
+        return self.configure_overlay_panel_window(window, force_top=True)
 
     def configure_overlay_window(self, window: object, *, force_top: bool = True) -> bool:
         ns_window = self._ns_window(window)
@@ -48,6 +64,23 @@ class MacOSWindowingApi:
             except Exception:
                 pass
         return activated
+
+    def activate_launcher_window(self, window: object) -> bool:
+        return self.activate_overlay_window(window)
+
+    def activate_overlay_window(self, window: object) -> bool:
+        ns_window = self._ns_window(window)
+        if ns_window is None:
+            return False
+        try:
+            ns_window.orderFrontRegardless()
+            ns_window.makeKeyAndOrderFront_(None)
+            return True
+        except Exception:
+            return False
+
+    def should_request_qt_activation(self) -> bool:
+        return False
 
     def focused_window_center(self) -> tuple[int, int] | None:
         try:
@@ -122,12 +155,28 @@ def configure_launcher_window(window: object) -> bool:
     return _default_api.configure_launcher_window(window)
 
 
+def configure_overlay_panel_window(window: object, *, force_top: bool = True) -> bool:
+    return _default_api.configure_overlay_panel_window(window, force_top=force_top)
+
+
 def configure_overlay_window(window: object, *, force_top: bool = True) -> bool:
     return _default_api.configure_overlay_window(window, force_top=force_top)
 
 
 def activate_window(window: object | None = None) -> bool:
     return _default_api.activate_window(window)
+
+
+def activate_launcher_window(window: object) -> bool:
+    return _default_api.activate_launcher_window(window)
+
+
+def activate_overlay_window(window: object) -> bool:
+    return _default_api.activate_overlay_window(window)
+
+
+def should_request_qt_activation() -> bool:
+    return _default_api.should_request_qt_activation()
 
 
 def focused_window_center() -> tuple[int, int] | None:

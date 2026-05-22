@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from app.plugins.runtime import PluginContext, SimpleQmlRuntime
 from app.storage import StorageManager
+from app.webengine import ensure_webengine_initialized
 
 from .view_model import RemoteFilesViewModel
 
 
 def _create_view_model(ctx: PluginContext) -> RemoteFilesViewModel:
+    ensure_webengine_initialized()
     storage = ctx.services.storage
     if not isinstance(storage, StorageManager):
         raise RuntimeError("Storage manager is unavailable")

@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from threading import Event
 from unittest.mock import patch
 
-from PySide6.QtCore import QObject, QPoint
+from PySide6.QtCore import QObject, QPoint, QRect
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +95,19 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(reopened.get("limit"), 3)
             self.assertEqual(other.get("limit"), 9)
             self.assertEqual(settings.path.name, "dict_store.db")
+
+
+class MemoryDiagnosticsTests(unittest.TestCase):
+    def test_macos_rss_uses_current_ps_value(self) -> None:
+        from app.diagnostics import memory
+
+        with (
+            patch("app.diagnostics.memory.sys.platform", "darwin"),
+            patch("app.diagnostics.memory.subprocess.check_output", return_value="12345\n") as check_output,
+        ):
+            self.assertEqual(memory._rss_bytes(), 12345 * 1024)
+
+        check_output.assert_called_once()
 
 
 class CommandIndexTests(unittest.TestCase):
@@ -223,6 +236,39 @@ class PluginSessionStateTests(unittest.TestCase):
 
 
 class PluginSurfaceCoordinatorTests(unittest.TestCase):
+    def test_qta_icon_provider_returns_centered_fixed_size_pixmap(self) -> None:
+        from PySide6.QtCore import QSize
+        from PySide6.QtGui import QImage
+        from PySide6.QtWidgets import QApplication
+        from app.qta_icon_provider import QtAwesomeImageProvider
+
+        app = QApplication.instance() or QApplication([])
+        del app
+        provider = QtAwesomeImageProvider()
+        reported = QSize()
+        pixmap = provider.requestPixmap("mdi6.api;color=2563EB;size=22", reported, QSize(22, 22))
+        image = pixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
+        rect = image.rect()
+        left = rect.width()
+        right = -1
+        top = rect.height()
+        bottom = -1
+        for y in range(rect.height()):
+            for x in range(rect.width()):
+                if image.pixelColor(x, y).alpha() <= 0:
+                    continue
+                left = min(left, x)
+                right = max(right, x)
+                top = min(top, y)
+                bottom = max(bottom, y)
+
+        self.assertEqual((pixmap.width(), pixmap.height()), (22, 22))
+        self.assertEqual((reported.width(), reported.height()), (22, 22))
+        self.assertGreaterEqual(left, 1)
+        self.assertGreaterEqual(top, 1)
+        self.assertLessEqual(right, 20)
+        self.assertLessEqual(bottom, 20)
+
     def test_window_config_preserves_always_on_top_option(self) -> None:
         from app.plugin_surface_coordinator import _plugin_window_config
 
@@ -273,14 +319,172 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         self.assertTrue(shown)
         self.assertEqual(opened, [])
 
+    def test_released_window_is_not_reused_after_close(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.setProperty("pluginId", "clipboard")
+                self.setProperty("qmlPage", "")
+                self.setProperty("pluginPageReleased", True)
+                self.setProperty("retainOnClose", True)
+                self.closed = False
+                self.deleted = False
+
+            def close(self) -> None:
+                self.closed = True
+
+            def deleteLater(self) -> None:
+                self.deleted = True
+
+        window = FakeWindow()
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {"clipboard": PluginWindowSurface(plugin_id="clipboard", window=window)}
+        coordinator._log = SimpleNamespace(debug=lambda *_a, **_kw: None)
+        coordinator._engine = None
+
+        surface = coordinator._get_live_surface("clipboard")
+
+        self.assertIsNone(surface)
+        self.assertNotIn("clipboard", coordinator._windows)
+        self.assertTrue(window.closed)
+        self.assertTrue(window.deleted)
+        self.assertTrue(window.property("pluginSurfaceDestroying"))
+
+    def test_adopt_existing_window_skips_released_shells(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self, qml_page: str, released: bool) -> None:
+                super().__init__()
+                self.setProperty("pluginId", "clipboard")
+                self.setProperty("qmlPage", qml_page)
+                self.setProperty("pluginPageReleased", released)
+                self.closed = False
+
+            def isVisible(self) -> bool:
+                return True
+
+            def close(self) -> None:
+                self.closed = True
+
+        released = FakeWindow("", True)
+        live = FakeWindow("features/clipboard/ClipboardWindowPage.qml", False)
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {}
+        coordinator._qt_app = SimpleNamespace(topLevelWindows=lambda: [released, live])
+
+        surface = coordinator._adopt_existing_window_surface("clipboard")
+
+        self.assertIsNotNone(surface)
+        self.assertIs(surface.window, live)
+        self.assertIs(coordinator._windows["clipboard"].window, live)
+        self.assertTrue(released.closed)
+
+    def test_new_window_stabilizes_geometry_after_first_show(self) -> None:
+        class FakeScreen:
+            def availableGeometry(self) -> QRect:
+                return QRect(100, 200, 1200, 900)
+
+        class FakeSignal:
+            def connect(self, _callback) -> None:
+                return None
+
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.retainedCloseRequested = FakeSignal()
+                self.calls: list[str] = []
+
+            def setWidth(self, value: int) -> None:
+                self.calls.append(f"width:{value}")
+
+            def setHeight(self, value: int) -> None:
+                self.calls.append(f"height:{value}")
+
+            def setX(self, _value: int) -> None:
+                return None
+
+            def setY(self, _value: int) -> None:
+                return None
+
+            def show(self) -> None:
+                self.calls.append("show")
+
+            def raise_(self) -> None:
+                self.calls.append("raise")
+
+        class FakeComponent:
+            def __init__(self, _engine, _url) -> None:
+                return None
+
+            def createWithInitialProperties(self, _properties: dict) -> FakeWindow:
+                return window
+
+            def errorString(self) -> str:
+                return ""
+
+        window = FakeWindow()
+        target_screen = FakeScreen()
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._engine = object()
+        coordinator._plugin_window_qml_path = "/tmp/PluginWindow.qml"
+        coordinator._app_dir = ROOT
+        coordinator._windows = {}
+        coordinator._launcher_window = None
+        coordinator._target_screen = lambda: target_screen
+        coordinator._log = SimpleNamespace(error=lambda *_a, **_kw: None)
+        coordinator._configure_surface_window = lambda _window, *, force_top: None
+        coordinator._activate_overlay_window = lambda _window: None
+        coordinator._activate_surface_window = lambda _window: None
+        stabilize_calls: list[tuple[object, int, int]] = []
+        coordinator._stabilize_window_geometry = (
+            lambda _window, screen, width, height: stabilize_calls.append((screen, width, height))
+        )
+        timers: list[tuple[int, object]] = []
+
+        def fake_single_shot(delay: int, callback) -> None:
+            timers.append((delay, callback))
+
+        manifest = PluginManifest(
+            id="clipboard",
+            name="Clipboard",
+            version="1",
+            description="",
+            icon="",
+            entrypoint="runtime:create_runtime",
+            qml_page="ClipboardWindowPage.qml",
+            window_options={"width": 980, "height": 640, "alwaysOnTop": True},
+        )
+        session = SimpleNamespace(
+            manifest=manifest,
+            qml_page=lambda: "features/clipboard/ClipboardWindowPage.qml",
+        )
+
+        with (
+            patch("app.plugin_surface_coordinator.QQmlComponent", FakeComponent),
+            patch("app.plugin_surface_coordinator.QTimer.singleShot", fake_single_shot),
+        ):
+            shown = coordinator._open_independent_window("clipboard", session)
+
+        self.assertTrue(shown)
+        self.assertEqual(window.calls, ["width:980", "height:640", "show", "raise"])
+        self.assertEqual(stabilize_calls, [(target_screen, 980, 640)])
+        self.assertEqual([delay for delay, _callback in timers], [0, 80, 50])
+
+        timers[0][1]()
+        timers[1][1]()
+
+        self.assertEqual(stabilize_calls, [(target_screen, 980, 640)] * 3)
+
     def test_existing_top_level_window_is_reused_when_surface_map_is_empty(self) -> None:
         class FakeWindow(QObject):
             def __init__(self, plugin_id: str, visible: bool) -> None:
                 super().__init__()
                 self.setProperty("pluginId", plugin_id)
+                self.setProperty("qmlPage", "features/clipboard/ClipboardWindowPage.qml")
+                self.setProperty("pluginPageReleased", False)
                 self.setProperty("retainOnClose", True)
                 self._visible = visible
                 self.closed = False
+                self.deleted = False
 
             def isVisible(self) -> bool:
                 return self._visible
@@ -288,6 +492,9 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
             def close(self) -> None:
                 self.closed = True
                 self._visible = False
+
+            def deleteLater(self) -> None:
+                self.deleted = True
 
         hidden_duplicate = FakeWindow("clipboard", False)
         visible_window = FakeWindow("clipboard", True)
@@ -338,6 +545,8 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
             def __init__(self, screen: object) -> None:
                 super().__init__()
                 self.setProperty("pluginId", "clipboard")
+                self.setProperty("qmlPage", "features/clipboard/ClipboardWindowPage.qml")
+                self.setProperty("pluginPageReleased", False)
                 self._screen = screen
                 self.calls: list[str] = []
 
@@ -375,8 +584,10 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         )
         coordinator._windowing = SimpleNamespace(
             configure_overlay_window=lambda _window, *, force_top=True: True,
-            activate_window=lambda _window: True,
+            activate_overlay_window=lambda _window: True,
+            should_request_qt_activation=lambda: True,
         )
+        coordinator._launcher_window = None
 
         with (
             patch("app.plugin_surface_coordinator.focused_window_point", return_value=QPoint(30, 40)),
@@ -394,6 +605,8 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
             def __init__(self) -> None:
                 super().__init__()
                 self.setProperty("pluginId", "clipboard")
+                self.setProperty("qmlPage", "features/clipboard/ClipboardWindowPage.qml")
+                self.setProperty("pluginPageReleased", False)
                 self.setProperty("alwaysOnTop", True)
                 self.calls: list[str] = []
 
@@ -413,11 +626,13 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
         coordinator._windows = {"clipboard": PluginWindowSurface(plugin_id="clipboard", window=window)}
         coordinator._qt_app = SimpleNamespace(topLevelWindows=lambda: [window], screenAt=lambda _pos: None)
+        coordinator._launcher_window = None
         calls: list[str] = []
         coordinator._move_window_to_target_screen = lambda _window: calls.append("move")
         coordinator._configure_surface_window = lambda _window, *, force_top: calls.append(f"configure:{force_top}")
         coordinator._windowing = SimpleNamespace(
-            activate_window=lambda _window: calls.append("native") or True,
+            activate_overlay_window=lambda _window: calls.append("native") or True,
+            should_request_qt_activation=lambda: True,
         )
 
         with patch("app.plugin_surface_coordinator.QTimer.singleShot"):
@@ -426,6 +641,33 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         self.assertTrue(shown)
         self.assertEqual(calls, ["move", "configure:True", "native"])
         self.assertEqual(window.calls, ["show", "raise", "request"])
+
+    def test_macos_surface_activation_skips_qt_request_activate(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.setProperty("alwaysOnTop", True)
+                self.calls: list[str] = []
+
+            def raise_(self) -> None:
+                self.calls.append("raise")
+
+            def requestActivate(self) -> None:
+                self.calls.append("request")
+
+        window = FakeWindow()
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        calls: list[str] = []
+        coordinator._configure_surface_window = lambda _window, *, force_top: calls.append(f"configure:{force_top}")
+        coordinator._windowing = SimpleNamespace(
+            activate_overlay_window=lambda _window: calls.append("native") or True,
+            should_request_qt_activation=lambda: False,
+        )
+
+        coordinator._activate_surface_window(window)
+
+        self.assertEqual(calls, ["configure:True", "native"])
+        self.assertEqual(window.calls, ["raise"])
 
     def test_delayed_surface_activation_reconfigures_window_level(self) -> None:
         class FakeWindow(QObject):
@@ -445,13 +687,148 @@ class PluginSurfaceCoordinatorTests(unittest.TestCase):
         calls: list[str] = []
         coordinator._configure_surface_window = lambda _window, *, force_top: calls.append(f"configure:{force_top}")
         coordinator._windowing = SimpleNamespace(
-            activate_window=lambda _window: calls.append("native") or True,
+            activate_overlay_window=lambda _window: calls.append("native") or True,
+            should_request_qt_activation=lambda: True,
         )
 
         coordinator._activate_surface_window(window)
 
         self.assertEqual(calls, ["configure:True", "native"])
         self.assertEqual(window.calls, ["raise", "request"])
+
+    def test_destroy_calls_delete_later_and_resets_retain(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.calls: list[tuple[str, object]] = []
+                self.setProperty("retainOnClose", True)
+
+            def setProperty(self, name: str, value: object) -> bool:
+                self.calls.append(("setProperty", (name, value)))
+                return super().setProperty(name, value)
+
+            def close(self) -> None:
+                self.calls.append(("close", None))
+
+            def deleteLater(self) -> None:
+                self.calls.append(("deleteLater", None))
+
+        window = FakeWindow()
+        window.calls.clear()  # ignore setup
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {"clipboard": PluginWindowSurface(plugin_id="clipboard", window=window)}
+        coordinator._log = SimpleNamespace(debug=lambda *_a, **_kw: None)
+        coordinator._engine = None
+
+        with patch("app.plugin_surface_coordinator.QTimer.singleShot", lambda _delay, _callback: None):
+            coordinator.destroy("clipboard")
+
+        self.assertNotIn("clipboard", coordinator._windows)
+        ordered = [name for name, _ in window.calls]
+        self.assertEqual(ordered, ["setProperty", "setProperty", "setProperty", "setProperty", "close", "deleteLater"])
+        self.assertEqual(window.calls[0], ("setProperty", ("pluginSurfaceDestroying", True)))
+        self.assertEqual(window.calls[1], ("setProperty", ("retainOnClose", False)))
+        self.assertEqual(window.calls[2], ("setProperty", ("pluginPageReleased", True)))
+        self.assertEqual(window.calls[3], ("setProperty", ("qmlPage", "")))
+
+    def test_destroy_also_removes_orphan_top_level_plugin_windows(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self, plugin_id: str) -> None:
+                super().__init__()
+                self.closed = False
+                self.deleted = False
+                self.setProperty("pluginId", plugin_id)
+
+            def close(self) -> None:
+                self.closed = True
+
+            def hide(self) -> None:
+                return None
+
+            def deleteLater(self) -> None:
+                self.deleted = True
+
+        tracked = FakeWindow("api-test")
+        orphan = FakeWindow("api-test")
+        other = FakeWindow("clipboard")
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {"api-test": PluginWindowSurface(plugin_id="api-test", window=tracked)}
+        coordinator._qt_app = SimpleNamespace(topLevelWindows=lambda: [orphan, other])
+        coordinator._log = SimpleNamespace(debug=lambda *_a, **_kw: None)
+        coordinator._engine = None
+
+        coordinator.destroy("api-test")
+
+        self.assertTrue(tracked.closed and tracked.deleted)
+        self.assertTrue(orphan.closed and orphan.deleted)
+        self.assertFalse(other.closed or other.deleted)
+
+    def test_destroy_schedules_delayed_qml_garbage_collection(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.setProperty("pluginId", "clipboard")
+
+            def close(self) -> None:
+                return None
+
+            def deleteLater(self) -> None:
+                return None
+
+        class FakeEngine:
+            def __init__(self) -> None:
+                self.collects = 0
+
+            def collectGarbage(self) -> None:
+                self.collects += 1
+
+        window = FakeWindow()
+        engine = FakeEngine()
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {"clipboard": PluginWindowSurface(plugin_id="clipboard", window=window)}
+        coordinator._log = SimpleNamespace(debug=lambda *_a, **_kw: None)
+        coordinator._engine = engine
+        timers: list[tuple[int, object]] = []
+
+        with patch("app.plugin_surface_coordinator.QTimer.singleShot", lambda delay, callback: timers.append((delay, callback))):
+            coordinator.destroy("clipboard")
+
+        self.assertEqual(engine.collects, 1)
+        self.assertEqual([delay for delay, _callback in timers], [0, 50, 200])
+
+        for _delay, callback in timers:
+            callback()
+
+        self.assertEqual(engine.collects, 4)
+
+    def test_destroy_all_clears_window_map_and_deletes_each(self) -> None:
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.deleted = False
+                self.closed = False
+
+            def close(self) -> None:
+                self.closed = True
+
+            def deleteLater(self) -> None:
+                self.deleted = True
+
+        win_a = FakeWindow()
+        win_b = FakeWindow()
+        coordinator = PluginSurfaceCoordinator.__new__(PluginSurfaceCoordinator)
+        coordinator._windows = {
+            "a": PluginWindowSurface(plugin_id="a", window=win_a),
+            "b": PluginWindowSurface(plugin_id="b", window=win_b),
+        }
+        coordinator._log = SimpleNamespace(debug=lambda *_a, **_kw: None)
+        coordinator._engine = None
+
+        coordinator.destroy_all()
+
+        self.assertEqual(coordinator._windows, {})
+        self.assertTrue(win_a.closed and win_a.deleted)
+        self.assertTrue(win_b.closed and win_b.deleted)
 
 
 class LauncherRuntimeCoordinatorTests(unittest.TestCase):
@@ -528,6 +905,42 @@ class LauncherRuntimeCoordinatorTests(unittest.TestCase):
 
         self.assertGreaterEqual(result["elapsedMs"], 0)
         self.assertEqual(launcher.calls, ["configure:False", "center", "show", "configure:True", "raise", "native", "request"])
+
+    def test_show_launcher_skips_qt_activation_on_macos(self) -> None:
+        from app.launcher_runtime_coordinator import LauncherRuntimeCoordinator
+
+        class FakeWindow(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.calls: list[str] = []
+
+            def width(self) -> int:
+                return 760
+
+            def height(self) -> int:
+                return 560
+
+            def show(self) -> None:
+                self.calls.append("show")
+
+            def raise_(self) -> None:
+                self.calls.append("raise")
+
+            def requestActivate(self) -> None:
+                self.calls.append("request")
+
+        launcher = FakeWindow()
+        coordinator = LauncherRuntimeCoordinator.__new__(LauncherRuntimeCoordinator)
+        coordinator._launcher_window = launcher
+        coordinator._platform_services = SimpleNamespace(info=SimpleNamespace(name="macos"))
+        coordinator._configure_launcher_window_for_macos = lambda *, force=False: launcher.calls.append(f"configure:{force}")
+        coordinator._center_launcher_window = lambda: launcher.calls.append("center")
+        coordinator._activate_launcher_window_native = lambda: launcher.calls.append("native")
+
+        result = coordinator._show_launcher_window(activate=True)
+
+        self.assertGreaterEqual(result["elapsedMs"], 0)
+        self.assertEqual(launcher.calls, ["configure:False", "center", "show", "configure:True", "raise", "native"])
 
 
 class ClipboardServiceTests(unittest.TestCase):
@@ -665,6 +1078,47 @@ class ClipboardServiceTests(unittest.TestCase):
             finally:
                 service.close()
 
+    def test_latest_matching_item_ignores_pin_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = StorageManager(Path(tmp))
+            service = ClipboardService(
+                storage.database("clipboard.db"),
+                settings_store=storage.dict_store("clipboard/settings"),
+            )
+            try:
+                service.store.add_text("alpha")
+                pinned = service.latest_item()
+                self.assertIsNotNone(pinned)
+                service.toggle_pin(int(pinned["id"]))
+                service.store.add_text("beta")
+
+                rows = service.search("")
+                self.assertEqual(rows[0]["content"], "alpha")
+
+                latest = service.latest_matching_item("")
+                self.assertIsNotNone(latest)
+                self.assertEqual(latest["content"], "beta")
+            finally:
+                service.close()
+
+    def test_close_clears_listeners(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = StorageManager(Path(tmp))
+            service = ClipboardService(
+                storage.database("clipboard.db"),
+                settings_store=storage.dict_store("clipboard/settings"),
+            )
+            service.add_history_listener(lambda: None)
+            service.add_history_listener(lambda: None)
+            service.add_config_listener(lambda: None)
+            self.assertEqual(len(service._history_listeners), 2)
+            self.assertEqual(len(service._config_listeners), 1)
+
+            service.close()
+
+            self.assertEqual(service._history_listeners, [])
+            self.assertEqual(service._config_listeners, [])
+
 
 class ClipboardViewModelTests(unittest.TestCase):
     def test_image_item_uses_valid_file_url_and_clean_title(self) -> None:
@@ -729,6 +1183,67 @@ class ClipboardViewModelTests(unittest.TestCase):
                 self.assertEqual(model.itemAt(0)["itemType"], "files")
             finally:
                 vm.close()
+                service.close()
+
+    def test_latest_visible_item_id_tracks_latest_record_not_top_row(self) -> None:
+        from features.clipboard.view_model import ClipboardWindowViewModel
+
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = StorageManager(Path(tmp))
+            service = ClipboardService(
+                storage.database("clipboard.db"),
+                settings_store=storage.dict_store("clipboard/settings"),
+            )
+            vm = ClipboardWindowViewModel(service)
+            try:
+                service.store.add_text("alpha")
+                alpha = service.latest_item()
+                self.assertIsNotNone(alpha)
+                service.toggle_pin(int(alpha["id"]))
+                service.store.add_text("beta")
+                beta = service.latest_item()
+                self.assertIsNotNone(beta)
+                vm.refreshHistory("")
+
+                self.assertEqual(vm.historyModel.itemAt(0)["content"], "alpha")
+                self.assertEqual(vm.latestVisibleItemId(), str(beta["id"]))
+            finally:
+                vm.close()
+                service.close()
+
+    def test_clipboard_view_model_dispose_clears_model_and_listeners(self) -> None:
+        from features.clipboard.view_model import ClipboardWindowViewModel
+
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = StorageManager(Path(tmp))
+            service = ClipboardService(
+                storage.database("clipboard.db"),
+                settings_store=storage.dict_store("clipboard/settings"),
+            )
+            try:
+                service.store.add_text("alpha")
+                vm = ClipboardWindowViewModel(service)
+                vm.refreshHistory("")
+                model = vm.historyModel
+
+                self.assertIsNotNone(model)
+                self.assertEqual(model.count, 1)
+                self.assertEqual(len(service._history_listeners), 1)
+                self.assertEqual(len(service._config_listeners), 1)
+
+                vm.dispose()
+
+                self.assertIsNone(vm.historyModel)
+                self.assertEqual(model.count, 0)
+                self.assertFalse(model.hasMore)
+                self.assertEqual(service._history_listeners, [])
+                self.assertEqual(service._config_listeners, [])
+                service.store.add_text("beta")
+                service._notify_history_changed()
+                self.assertEqual(model.count, 0)
+            finally:
+                if "vm" in locals():
+                    vm.dispose()
                 service.close()
 
 

@@ -532,6 +532,16 @@ class ApiTestService:
     def close(self) -> None:
         if self._ws_service is not None:
             self._ws_service.disconnect_all()
+        self._history.clear()
+        self._http_service = None
+        self._ws_service = None
+        self._collections = None
+        self._environments = None
+        self._tabs = None
+        self._variables = None
+        self._scripts = None
+        self._cases = None
+        self._database = None
 
     @staticmethod
     def _parse_key_value_text(text: str) -> dict[str, str]:

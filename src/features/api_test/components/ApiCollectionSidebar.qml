@@ -93,6 +93,31 @@ Rectangle {
         })
     }
 
+    function disposePage() {
+        addMenu.close()
+        filterMenu.close()
+        contextMenu.close()
+        moveMenu.close()
+        collectionTree = []
+        treeFlick.visibleRows = []
+        qtaFn = null
+        methodColorFn = null
+        selectedPath = ""
+        selectedNodeId = ""
+        contextNode = null
+        contextNodeId = ""
+        contextPath = ""
+        moveGroupTargets = []
+        moveSourcePath = ""
+        moveSourceNodeId = ""
+        editingNodeId = ""
+        editingPath = ""
+        pendingRenameNodeId = ""
+        pendingRenamePath = ""
+        activeRenameText = ""
+        treeFlick.contentY = 0
+    }
+
     function refreshVisibleRows() {
         if (treeFlick)
             treeFlick.visibleRows = root.flattenVisibleTree()

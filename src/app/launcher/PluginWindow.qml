@@ -17,6 +17,8 @@ Window {
     property bool closeOnEsc: false
     property bool isMacos: typeof app !== "undefined" && app ? app.isMacos : false
     property bool retainOnClose: true
+    property bool pluginPageReleased: false
+    property bool pluginSurfaceDestroying: false
     signal retainedCloseRequested(string pluginId)
 
     width: 800
@@ -31,7 +33,6 @@ Window {
     readonly property bool pluginPageReady: pageLoader.status === Loader.Ready
     readonly property int pluginPageStatus: pageLoader.status
 
-    // 加载插件页面
     function pluginPageUrl(page) {
         if (!page || page.length === 0) return ""
         if (
@@ -52,15 +53,36 @@ Window {
         height = initialHeight
     }
 
+    function releasePluginPage() {
+        pluginPageReleased = true
+        if (pageLoader.item && typeof pageLoader.item.disposePage === "function")
+            pageLoader.item.disposePage()
+        pageLoader.active = false
+        pageLoader.source = ""
+        qmlPage = ""
+        pluginData = ({})
+        try {
+            gc()
+        } catch (e) {
+        }
+    }
+
+    onQmlPageChanged: {
+        if (qmlPage.length > 0) {
+            pluginPageReleased = false
+        }
+    }
+
     Component.onCompleted: applyInitialSize(initialWidth, initialHeight)
+    Component.onDestruction: releasePluginPage()
 
     onClosing: function(close) {
-        // The runtime now keeps sessions warm for a short retention window.
-        // When retainOnClose is enabled we intercept the native window close,
-        // hide the surface, and let Python move the session into retained state.
-        if (!retainOnClose)
+        if (!retainOnClose) {
+            releasePluginPage()
             return
+        }
         close.accepted = false
+        releasePluginPage()
         pluginWin.hide()
         pluginWin.retainedCloseRequested(pluginWin.pluginId)
     }

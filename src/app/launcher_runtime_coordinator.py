@@ -66,7 +66,6 @@ class LauncherRuntimeCoordinator:
         self._on_quit = on_quit
         self._log = get_logger("app.launcher_runtime")
         self._background_plugins_started = False
-        self._launcher_prewarmed = False
         self._hotkeys_registered = False
         self._launcher_window_macos_configured = False
         self._last_hotkey_signal_at = 0.0
@@ -108,9 +107,6 @@ class LauncherRuntimeCoordinator:
         )
         QTimer.singleShot(500, self.register_hotkeys)
         self._log.debug("hotkey.register_scheduled", "全局热键注册已调度", delayMs=500)
-        if not self._is_macos():
-            QTimer.singleShot(1200, self.prewarm_launcher_window)
-            self._log.debug("launcher.prewarm_scheduled", "启动器窗口预热已调度", delayMs=1200)
 
     def shutdown(self) -> None:
         self._hotkey_coordinator.unregister_all()
@@ -180,7 +176,6 @@ class LauncherRuntimeCoordinator:
             self._launcher_window.hide()
             self._log.debug("launcher.hidden_by_hotkey", "启动器已由热键隐藏", elapsedMs=int((perf_counter() - hide_started_at) * 1000))
             return
-        self._restore_launcher_window_state()
         show_result = self._show_launcher_window(activate=True)
         check_app_index = getattr(self._bridge, "checkAppIndex", None)
         if callable(check_app_index):
@@ -203,52 +198,6 @@ class LauncherRuntimeCoordinator:
             elapsedMs=elapsed_ms,
         )
         QTimer.singleShot(50, lambda started_at=signal_at: self._activate_and_log_launcher_window("launcher.state_after_show_50ms", started_at))
-
-    def prewarm_launcher_window(self) -> None:
-        if self._launcher_prewarmed:
-            return
-        self._launcher_prewarmed = True
-        if self._launcher_window is None or not is_qobject_alive(self._launcher_window):
-            self._log.warning("launcher.prewarm_skipped", "启动器窗口预热跳过，窗口不存在")
-            return
-        if self._launcher_window.isVisible():
-            self._log.debug("launcher.prewarm_skipped", "启动器窗口预热跳过，窗口已显示")
-            return
-        started_at = perf_counter()
-        old_opacity = 1.0
-        show_result = {
-            "centerElapsedMs": 0,
-            "showCallElapsedMs": 0,
-            "raiseElapsedMs": 0,
-            "activateElapsedMs": 0,
-            "elapsedMs": 0,
-        }
-        hide_elapsed_ms = 0
-        try:
-            old_opacity = float(self._launcher_window.opacity())
-        except (AttributeError, RuntimeError, TypeError, ValueError):
-            old_opacity = 1.0
-        try:
-            self._launcher_window.setOpacity(0.0)
-            self._launcher_window.setProperty("prewarming", True)
-            show_result = self._show_launcher_window(activate=False)
-            hide_started_at = perf_counter()
-            self._launcher_window.hide()
-            hide_elapsed_ms = int((perf_counter() - hide_started_at) * 1000)
-        except Exception as exc:
-            self._log.warning("launcher.prewarm_failed", "启动器窗口预热失败", error=str(exc))
-        finally:
-            self._restore_launcher_window_state(opacity=old_opacity, hide=True)
-        self._log.debug(
-            "launcher.prewarm_complete",
-            "启动器窗口预热完成",
-            centerElapsedMs=show_result["centerElapsedMs"],
-            showCallElapsedMs=show_result["showCallElapsedMs"],
-            raiseElapsedMs=show_result["raiseElapsedMs"],
-            activateElapsedMs=show_result["activateElapsedMs"],
-            hideElapsedMs=hide_elapsed_ms,
-            elapsedMs=int((perf_counter() - started_at) * 1000),
-        )
 
     def hide_launcher(self) -> None:
         if self._launcher_window is not None and is_qobject_alive(self._launcher_window):
@@ -307,15 +256,20 @@ class LauncherRuntimeCoordinator:
         if not plugin_id:
             return
         normalized_host = "window" if host == "window" else "list" if host == "list" else "inline"
-        self._surface_coordinator.suspend(plugin_id, normalized_host)
-        self._session_manager.suspend_plugin(plugin_id, normalized_host)
+        self._bridge.setPluginListItems([])
+        if normalized_host == "inline" and self._launcher_window is not None and is_qobject_alive(self._launcher_window):
+            self._launcher_window.destroyInlineHost(plugin_id)
+        self._surface_coordinator.destroy(plugin_id)
+        self._session_manager.unload_plugin(plugin_id)
+        self._collect_qml_garbage()
 
     def on_surface_retained_close(self, plugin_id: str, host: str) -> None:
-        self._session_manager.suspend_plugin(plugin_id, "window" if host == "window" else "inline")
+        self.suspend_plugin(plugin_id, host)
 
     def on_retention_expired(self, plugin_id: str, state: SessionState) -> None:
         self._surface_coordinator.notify_retention_expired(plugin_id, state)
         self._session_manager.unload_plugin(plugin_id)
+        self._collect_qml_garbage()
 
     def detach_plugin_to_window(self, plugin_id: str) -> None:
         if not plugin_id:
@@ -340,7 +294,9 @@ class LauncherRuntimeCoordinator:
 
     def force_close_plugin(self, plugin_id: str) -> None:
         if plugin_id:
+            self._surface_coordinator.destroy(plugin_id)
             self._session_manager.unload_plugin(plugin_id)
+            self._collect_qml_garbage()
 
     def on_plugin_input_edited(self, plugin_id: str, text: str) -> None:
         items = self._session_manager.update_plugin_input(plugin_id, text)
@@ -407,23 +363,6 @@ class LauncherRuntimeCoordinator:
             int(self._launcher_window.height()) or 600,
         )
 
-    def _restore_launcher_window_state(self, *, opacity: float = 1.0, hide: bool = False) -> None:
-        if self._launcher_window is None or not is_qobject_alive(self._launcher_window):
-            return
-        try:
-            self._launcher_window.setProperty("prewarming", False)
-        except RuntimeError:
-            return
-        try:
-            self._launcher_window.setOpacity(opacity)
-        except (AttributeError, RuntimeError):
-            pass
-        if hide:
-            try:
-                self._launcher_window.hide()
-            except RuntimeError:
-                pass
-
     def _show_launcher_window(self, *, activate: bool) -> dict[str, int]:
         if self._launcher_window is None or not is_qobject_alive(self._launcher_window):
             return {
@@ -451,7 +390,7 @@ class LauncherRuntimeCoordinator:
         activate_started_at = perf_counter()
         if activate:
             self._activate_launcher_window_native()
-            self._launcher_window.requestActivate()
+            self._request_launcher_qt_activation()
         activate_elapsed_ms = int((perf_counter() - activate_started_at) * 1000)
         return {
             "centerElapsedMs": center_elapsed_ms,
@@ -486,7 +425,7 @@ class LauncherRuntimeCoordinator:
             if callable(raise_window):
                 raise_window()
             self._activate_launcher_window_native()
-            self._launcher_window.requestActivate()
+            self._request_launcher_qt_activation()
         self._log_launcher_window_state(event, signal_at)
 
     def _configure_launcher_window_for_macos(self, *, force: bool = False) -> None:
@@ -503,12 +442,33 @@ class LauncherRuntimeCoordinator:
 
     def _activate_launcher_window_native(self) -> None:
         try:
-            self._platform_services.windowing.activate_window(self._launcher_window)
+            self._platform_services.windowing.activate_launcher_window(self._launcher_window)
         except Exception as exc:
             self._log.debug("launcher.activate_failed", "启动器窗口原生激活失败", error=str(exc))
 
+    def _request_launcher_qt_activation(self) -> None:
+        if self._is_macos():
+            return
+        if self._launcher_window is None or not is_qobject_alive(self._launcher_window):
+            return
+        try:
+            self._launcher_window.requestActivate()
+        except RuntimeError:
+            return
+
     def _is_macos(self) -> bool:
-        return getattr(self._platform_services.info, "name", "") == "macos"
+        platform_services = getattr(self, "_platform_services", None)
+        info = getattr(platform_services, "info", None)
+        return getattr(info, "name", "") == "macos"
+
+    def _collect_qml_garbage(self) -> None:
+        schedule_collect = getattr(self._surface_coordinator, "schedule_collect_garbage", None)
+        if callable(schedule_collect):
+            schedule_collect()
+            return
+        collect = getattr(self._surface_coordinator, "collect_garbage", None)
+        if callable(collect):
+            collect()
 
     def _clipboard_hotkey_text(self) -> str:
         service = self._plugin_context.services.clipboard

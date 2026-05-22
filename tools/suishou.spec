@@ -43,6 +43,7 @@ icon_data = _walk_rel(SRC, "*.svg")
 
 # Web assets (xterm terminal)
 web_assets = _walk_rel(SRC, "*.html", "*.css")
+qta_icon_data = _walk_rel(PROJECT_ROOT / "assets" / "qta_icons", "*.png", "*.json")
 
 # ── hidden imports ───────────────────────────────────────────────────────────
 # PySide6 / Qt
@@ -65,7 +66,10 @@ HIDDEN_IMPORTS = [
     "app.platform.common",
     "app.platform.macos",
     "app.platform.noop",
+    "app.diagnostics",
+    "app.diagnostics.memory",
     "app.plugins",
+    "app.webengine",
     "app.services.clipboard",
     "app.services.clipboard.backends",
     "app.storage",
@@ -91,7 +95,7 @@ EXCLUDE_IMPORTS = [
 ]
 
 # ── datas ────────────────────────────────────────────────────────────────────
-DATAS = qml_data + manifest_data + plugin_python_data + icon_data + web_assets
+DATAS = qml_data + manifest_data + plugin_python_data + icon_data + web_assets + qta_icon_data
 
 # ── block cipher (optional) ──────────────────────────────────────────────────
 BLOCK_CIPHER_KEY = None

@@ -21,6 +21,20 @@ class ResponseState:
         self.final_url = ""
         self.outcome = "idle"
 
+    def clear(self) -> None:
+        self.title_text = "返回响应"
+        self.body_text = ""
+        self.body_html = ""
+        self.headers_text = ""
+        self.request_text = ""
+        self.curl_text = ""
+        self.request_log_text = ""
+        self.log_entries.clear()
+        self.status_code = ""
+        self.elapsed_ms = ""
+        self.final_url = ""
+        self.outcome = "idle"
+
     def apply(self, title: str, body_text: str, details: dict | None = None) -> None:
         meta = details or {}
         self.title_text = title

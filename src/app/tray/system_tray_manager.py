@@ -42,12 +42,16 @@ class SystemTrayManager(QObject):
 
     def _build_icon(self) -> None:
         try:
-            import qtawesome as qta
+            from app.qta_icon_provider import load_icon
 
             packaged = self._platform_services.paths.is_frozen()
             appearance = self._platform_services.tray_appearance
             color = appearance.icon_color(packaged=packaged)
-            icon = qta.icon("fa5s.rocket", color=color)
+            pixmap = load_icon("fa5s.rocket", color=color, size=64)
+            if pixmap is None:
+                self._tray.setIcon(QIcon())
+                return
+            icon = QIcon(pixmap)
             appearance.apply_mask(icon, packaged=packaged)
             self._tray.setIcon(icon)
         except Exception:

@@ -48,7 +48,6 @@ Window {
     property string mixedPluginId: ""
     property string mixedPluginMode: ""
     property bool suppressPluginInputEdit: false
-    property bool prewarming: false
     property bool showGraceActive: false
 
     Item {
@@ -63,8 +62,6 @@ Window {
     }
 
     onActiveChanged: {
-        if (prewarming)
-            return;
         if (active) {
             hideTimer.stop();
             return;
@@ -87,8 +84,6 @@ Window {
     }
 
     onVisibleChanged: {
-        if (prewarming)
-            return;
         hideTimer.stop();
         if (visible) {
             showGraceActive = true;
@@ -138,6 +133,16 @@ Window {
                 clip: true
                 asynchronous: true
                 source: pageUrl
+            }
+
+            function releasePluginPage() {
+                retainedLoader.active = false;
+                retainedLoader.source = "";
+                pageUrl = "";
+                try {
+                    gc();
+                } catch (e) {
+                }
             }
         }
     }
@@ -228,6 +233,8 @@ Window {
         var host = retainedInlineHosts[pluginId];
         if (!host)
             return;
+        if (typeof host.releasePluginPage === "function")
+            host.releasePluginPage();
         host.destroy();
         delete retainedInlineHosts[pluginId];
     }
@@ -360,10 +367,6 @@ Window {
         var closingPluginId = mixedPluginId;
         var closingPluginMode = mixedPluginMode;
 
-        if (closingPluginMode === "inline_view" && closingPluginId.length > 0) {
-            retainInlineHost(closingPluginId);
-        }
-
         mixedMode = false;
         mixedPluginId = "";
         mixedPluginMode = "";
@@ -377,6 +380,8 @@ Window {
             } else if (closingPluginMode === "inline_view") {
                 launcherBridge.suspendPlugin(closingPluginId, "inline");
             }
+        } else if (closingPluginMode === "inline_view" && closingPluginId.length > 0) {
+            destroyInlineHost(closingPluginId);
         }
         if (hasBridge)
             launcherBridge.performSearch(searchInput.text);

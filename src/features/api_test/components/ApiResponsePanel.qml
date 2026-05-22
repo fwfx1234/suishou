@@ -103,6 +103,23 @@ ColumnLayout {
         return cleaned
     }
 
+    function disposePage() {
+        detailTab = 0
+        bodyText = ""
+        bodyHtml = ""
+        headersText = ""
+        requestText = ""
+        curlText = ""
+        requestLogText = ""
+        logEntries = []
+        titleText = "返回响应"
+        statusCode = ""
+        elapsedMs = ""
+        finalUrl = ""
+        outcome = "idle"
+        responseTextArea.text = ""
+    }
+
     Rectangle {
         Layout.fillWidth: true
         Layout.fillHeight: true

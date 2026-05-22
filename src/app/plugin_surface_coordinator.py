@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import sys
+import gc
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import shiboken6
-from PySide6.QtCore import QPoint, QObject, QTimer, QUrl
+from PySide6.QtCore import QMetaObject, QPoint, QObject, QTimer, QUrl
 from PySide6.QtGui import QIcon, QCursor
 from PySide6.QtQml import QQmlComponent, QQmlApplicationEngine
 
@@ -31,8 +33,10 @@ def _icon_from_manifest(value: str, app_dir: Path) -> QIcon:
         return QIcon()
     if value.startswith("qta:"):
         try:
-            import qtawesome as qta
-            return qta.icon(value.removeprefix("qta:"), color="#8B5CF6")
+            from app.qta_icon_provider import load_icon
+
+            pixmap = load_icon(value.removeprefix("qta:"), color="#8B5CF6", size=64)
+            return QIcon(pixmap) if pixmap is not None else QIcon()
         except Exception:
             return QIcon()
     if value.startswith("file:///"):
@@ -94,6 +98,22 @@ def _is_qobject_alive(obj: object) -> bool:
 
 def is_qobject_alive(obj: object) -> bool:
     return _is_qobject_alive(obj)
+
+
+def _invoke_qml_noarg_method(obj: object, name: str) -> bool:
+    if not _is_qobject_alive(obj):
+        return False
+    method = getattr(obj, name, None)
+    if callable(method):
+        try:
+            method()
+            return True
+        except (RuntimeError, TypeError):
+            pass
+    try:
+        return bool(QMetaObject.invokeMethod(obj, name))
+    except (RuntimeError, TypeError, ValueError):
+        return False
 
 
 def _set_window_size_if_alive(win: object, width: int, height: int) -> None:
@@ -242,25 +262,82 @@ class PluginSurfaceCoordinator:
 
     def destroy(self, plugin_id: str) -> None:
         surface = self._windows.pop(plugin_id, None)
-        if surface is None:
+        candidates = self._window_destroy_candidates(plugin_id, surface.window if surface is not None else None)
+        if not candidates:
             return
-        win = surface.window
+        for window in candidates:
+            self._force_destroy_window(window, plugin_id=plugin_id)
+
+    def destroy_all(self) -> None:
+        for plugin_id, surface in list(self._windows.items()):
+            for window in self._window_destroy_candidates(plugin_id, surface.window):
+                self._force_destroy_window(window, plugin_id=plugin_id)
+        self._windows.clear()
+
+    def collect_garbage(self) -> None:
+        gc.collect()
+        engine = getattr(self, "_engine", None)
+        if engine is None:
+            return
+        try:
+            engine.collectGarbage()
+        except RuntimeError:
+            pass
+
+    def schedule_collect_garbage(self) -> None:
+        self.collect_garbage()
+        for delay in (0, 50, 200):
+            QTimer.singleShot(delay, self.collect_garbage)
+
+    def _force_destroy_window(self, win: object, *, plugin_id: str | None = None) -> None:
         if not _is_qobject_alive(win):
             return
         try:
+            win.setProperty("pluginSurfaceDestroying", True)
             win.setProperty("retainOnClose", False)
+            released = _invoke_qml_noarg_method(win, "releasePluginPage")
+            if not released:
+                win.setProperty("pluginPageReleased", True)
+                win.setProperty("qmlPage", "")
             win.close()
+            hide = getattr(win, "hide", None)
+            if callable(hide):
+                hide()
         except RuntimeError:
             return
+        try:
+            win.deleteLater()
+        except RuntimeError:
+            return
+        self._forget_window_surface(plugin_id or str(win.property("pluginId") or ""), win)
+        self.schedule_collect_garbage()
+        log = getattr(self, "_log", None)
+        if log is not None:
+            log.debug(
+                "plugin.window.destroyed",
+                "销毁插件窗口",
+                pluginId=plugin_id or "",
+                windowsCount=len(self._windows),
+            )
 
-    def destroy_all(self) -> None:
-        for surface in list(self._windows.values()):
-            if _is_qobject_alive(surface.window):
+    def _window_destroy_candidates(self, plugin_id: str, primary: object | None = None) -> list[object]:
+        candidates: list[object] = []
+        if primary is not None:
+            candidates.append(primary)
+        qt_app = getattr(self, "_qt_app", None)
+        windows_fn = getattr(qt_app, "topLevelWindows", None)
+        if callable(windows_fn):
+            for window in list(windows_fn()):
+                if not _is_qobject_alive(window):
+                    continue
                 try:
-                    surface.window.setProperty("retainOnClose", False)
-                    surface.window.close()
+                    if str(window.property("pluginId") or "") != plugin_id:
+                        continue
                 except RuntimeError:
-                    pass
+                    continue
+                if not any(window is candidate for candidate in candidates):
+                    candidates.append(window)
+        return candidates
 
     def notify_retention_expired(self, plugin_id: str, state: SessionState) -> None:
         host = self._host_from_state(state)
@@ -282,8 +359,7 @@ class PluginSurfaceCoordinator:
                     force_top=bool(surface.window.property("alwaysOnTop")),
                 )
                 surface.window.raise_()
-                self._windowing.activate_window(surface.window)
-                surface.window.requestActivate()
+                self._activate_overlay_window(surface.window)
                 QTimer.singleShot(50, lambda w=surface.window: self._activate_surface_window(w))
                 return True
             except RuntimeError:
@@ -347,7 +423,8 @@ class PluginSurfaceCoordinator:
                 self._on_retained_close(pid, "window")
 
         win.retainedCloseRequested.connect(_on_retained_close)
-        win.destroyed.connect(lambda _obj=None, pid=plugin_id, window=win: self._forget_window_surface(pid, window))
+        window_ref = weakref.ref(win)
+        win.destroyed.connect(lambda _obj=None, pid=plugin_id, ref=window_ref: self._forget_window_surface(pid, ref()))
 
         self._windows[plugin_id] = PluginWindowSurface(plugin_id=plugin_id, window=win)
 
@@ -355,6 +432,8 @@ class PluginSurfaceCoordinator:
             self._launcher_window.hide()
 
         win.show()
+        if not wc["fullscreen"]:
+            self._stabilize_window_geometry(win, target_screen, wc["width"], wc["height"])
         self._configure_surface_window(win, force_top=wc["alwaysOnTop"])
         raise_window = getattr(win, "raise_", None)
         if callable(raise_window):
@@ -362,12 +441,17 @@ class PluginSurfaceCoordinator:
         if not wc["fullscreen"]:
             QTimer.singleShot(
                 0,
-                lambda w=win, width=wc["width"], height=wc["height"]: _set_window_size_if_alive(
-                    w, width, height
+                lambda w=win, screen=target_screen, width=wc["width"], height=wc["height"]: self._stabilize_window_geometry(
+                    w, screen, width, height
                 ),
             )
-        self._windowing.activate_window(win)
-        win.requestActivate()
+            QTimer.singleShot(
+                80,
+                lambda w=win, screen=target_screen, width=wc["width"], height=wc["height"]: self._stabilize_window_geometry(
+                    w, screen, width, height
+                ),
+            )
+        self._activate_overlay_window(win)
         QTimer.singleShot(50, lambda w=win: self._activate_surface_window(w))
         return True
 
@@ -400,8 +484,12 @@ class PluginSurfaceCoordinator:
         if not _is_qobject_alive(surface.window):
             self._windows.pop(plugin_id, None)
             return self._adopt_existing_window_surface(plugin_id)
-        self._close_duplicate_window_surfaces(plugin_id, surface.window)
-        return surface
+        if self._is_window_reusable(surface.window):
+            self._close_duplicate_window_surfaces(plugin_id, surface.window)
+            return surface
+        self._windows.pop(plugin_id, None)
+        self._force_destroy_window(surface.window, plugin_id=plugin_id)
+        return None
 
     def _forget_window_surface(self, plugin_id: str, window: object) -> None:
         surface = self._windows.get(plugin_id)
@@ -415,7 +503,11 @@ class PluginSurfaceCoordinator:
         matches = [
             window
             for window in windows_fn()
-            if _is_qobject_alive(window) and str(window.property("pluginId") or "") == plugin_id
+            if (
+                _is_qobject_alive(window)
+                and str(window.property("pluginId") or "") == plugin_id
+                and self._is_window_reusable(window)
+            )
         ]
         if not matches:
             return None
@@ -435,13 +527,28 @@ class PluginSurfaceCoordinator:
             if str(window.property("pluginId") or "") != plugin_id:
                 continue
             try:
-                window.setProperty("retainOnClose", False)
-                window.close()
+                self._force_destroy_window(window, plugin_id=plugin_id)
             except RuntimeError:
                 pass
 
+    def _is_window_reusable(self, window: object) -> bool:
+        if not _is_qobject_alive(window):
+            return False
+        try:
+            if bool(window.property("pluginSurfaceDestroying")):
+                return False
+            if bool(window.property("pluginPageReleased")):
+                return False
+            qml_page = str(window.property("qmlPage") or "")
+        except RuntimeError:
+            return False
+        return bool(qml_page)
+
     def _move_window_to_target_screen(self, window: object) -> None:
         target_screen = self._target_screen(fallback_window=window)
+        self._move_window_to_screen(window, target_screen)
+
+    def _move_window_to_screen(self, window: object, target_screen: object | None, *, force_center: bool = False) -> None:
         if target_screen is None:
             return
         current_screen = None
@@ -452,14 +559,42 @@ class PluginSurfaceCoordinator:
             except RuntimeError:
                 current_screen = None
         _set_window_screen(window, target_screen)
-        if current_screen is target_screen:
+        if not force_center and current_screen is target_screen:
             return
         width = _window_dimension(window, "width", 800)
         height = _window_dimension(window, "height", 600)
         _center_window_once(window, target_screen, width, height)
 
+    def _stabilize_window_geometry(self, window: object, target_screen: object | None, width: int, height: int) -> None:
+        _set_window_size_if_alive(window, width, height)
+        self._move_window_to_screen(window, target_screen, force_center=True)
+
     def _configure_surface_window(self, window: object, *, force_top: bool = True) -> None:
+        configure_panel = getattr(self._windowing, "configure_overlay_panel_window", None)
+        try:
+            always_on_top = bool(window.property("alwaysOnTop"))
+        except RuntimeError:
+            always_on_top = False
+        if always_on_top and callable(configure_panel):
+            configure_panel(window, force_top=force_top)
+            return
         self._windowing.configure_overlay_window(window, force_top=force_top)
+
+    def _activate_overlay_window(self, window: object) -> None:
+        activate = getattr(self._windowing, "activate_overlay_window", None)
+        if callable(activate):
+            activate(window)
+        else:
+            self._windowing.activate_window(window)
+        request_activate_allowed = getattr(self._windowing, "should_request_qt_activation", lambda: True)
+        if not bool(request_activate_allowed()):
+            return
+        request_activate = getattr(window, "requestActivate", None)
+        if callable(request_activate):
+            try:
+                request_activate()
+            except RuntimeError:
+                return
 
     def _activate_surface_window(self, window: object) -> None:
         if not _is_qobject_alive(window):
@@ -475,13 +610,7 @@ class PluginSurfaceCoordinator:
                 raise_window()
             except RuntimeError:
                 return
-        self._windowing.activate_window(window)
-        request_activate = getattr(window, "requestActivate", None)
-        if callable(request_activate):
-            try:
-                request_activate()
-            except RuntimeError:
-                return
+        self._activate_overlay_window(window)
 
     def _target_screen(self, *, fallback_window: object | None = None) -> object | None:
         screen_at = getattr(self._qt_app, "screenAt", None)

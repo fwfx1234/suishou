@@ -104,6 +104,17 @@ class TestRequestSenderLifecycle:
         # Should be rejected silently without on_response
         on_response.assert_not_called()
 
+    def test_dispose_drops_callback_references(self, make_sender) -> None:
+        sender, _, on_response, on_history, on_sending = make_sender()
+
+        sender.dispose()
+
+        assert sender._on_response is not on_response
+        assert sender._on_history is not on_history
+        assert sender._on_sending is not on_sending
+        assert sender._on_ws_timeline is None
+        assert sender._on_ws_status is None
+
     def test_body_mode_form_builds_urlencoded_body(self, make_sender) -> None:
         from app.concurrency import PythonTaskRunner
 
