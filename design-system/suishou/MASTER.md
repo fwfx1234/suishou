@@ -1,4 +1,4 @@
-# Desktop Tools UI Design System (ui-ux-pro-max)
+# Suishou UI Design System (ui-ux-pro-max)
 
 > Generated with `ui-ux-pro-max` workflow, then curated using domain results:
 > - `style`: Flat Design

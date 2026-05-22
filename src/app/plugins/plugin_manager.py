@@ -159,7 +159,7 @@ class PluginManager:
         if not module_path.is_file():
             return importlib.import_module(module_name)
 
-        package_name = f"_py_desktop_plugin_{_safe_module_part(manifest.id)}"
+        package_name = f"_suishou_plugin_{_safe_module_part(manifest.id)}"
         _ensure_plugin_packages(package_name, package_path, module_name)
         import_name = f"{package_name}.{module_name}"
         loaded = sys.modules.get(import_name)

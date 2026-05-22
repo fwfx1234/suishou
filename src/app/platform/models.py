@@ -23,6 +23,10 @@ class PlatformResult:
     code: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def error_code(self) -> str:
+        return self.code
+
 
 @dataclass(frozen=True, slots=True)
 class FileDialogFilter:

@@ -1,4 +1,4 @@
-# py-desktop-tools
+# suishou
 
 基于 `PySide6 + Qt Quick (QML)` 的桌面工具箱，核心交互是一个类 uTools 的启动器：应用常驻后台，按 `Alt+Space` 唤起搜索框，按需打开插件、系统工具和应用。
 
@@ -18,7 +18,7 @@ app
 QML 热重载：
 
 ```powershell
-$env:PY_DESKTOP_QML_HOT_RELOAD = "1"
+$env:SUISHOU_QML_HOT_RELOAD = "1"
 uv run app
 ```
 

@@ -35,7 +35,7 @@ RetentionExpiredCallback = Callable[[str, SessionState], None]
 def _retention_interval_ms() -> int:
     """Read the retention interval from env for debugging, otherwise use 5 minutes."""
 
-    value = configured_int("plugins.retentionMs", "PY_DESKTOP_PLUGIN_RETENTION_MS", 300_000)
+    value = configured_int("plugins.retentionMs", ("SUISHOU_PLUGIN_RETENTION_MS", "PY_DESKTOP_PLUGIN_RETENTION_MS"), 300_000)
     return max(1_000, value)
 
 

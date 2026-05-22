@@ -300,7 +300,7 @@ def _convert_icns_with_iconutil(icon_path: Path, out_path: Path) -> str:
     if shutil.which("iconutil") is None:
         return ""
     try:
-        with tempfile.TemporaryDirectory(prefix="py_desktop_tools_icon_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="suishou_icon_") as tmp:
             iconset_dir = Path(tmp) / "icon.iconset"
             subprocess.run(
                 ["iconutil", "-c", "iconset", str(icon_path), "-o", str(iconset_dir)],

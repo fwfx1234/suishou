@@ -498,7 +498,7 @@ Item {
 
                 Label {
                     Layout.fillWidth: true
-                    text: itemData.env ? ("环境变量：" + itemData.env) : "设置文件项"
+                    text: itemData.env ? ("环境变量：" + (itemData.activeEnv || itemData.env)) : "设置文件项"
                     color: Theme.token("color-text-secondary", row.dark)
                     font.pixelSize: Theme.fontSize.caption
                     elide: Text.ElideMiddle

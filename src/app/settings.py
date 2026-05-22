@@ -5,10 +5,12 @@ import os
 import sys
 from pathlib import Path
 from threading import RLock
+from collections.abc import Iterable
 from typing import Any
 
 
-SETTINGS_FILE_ENV = "PY_DESKTOP_TOOLS_SETTINGS_FILE"
+SETTINGS_FILE_ENV = "SUISHOU_SETTINGS_FILE"
+LEGACY_SETTINGS_FILE_ENV = "PY_DESKTOP_TOOLS_SETTINGS_FILE"
 
 _TRUE_VALUES = {"1", "true", "yes", "on", "always"}
 _FALSE_VALUES = {"0", "false", "no", "off", "never"}
@@ -54,8 +56,36 @@ class AppSettingsStore:
         )
 
 
+EnvNames = str | Iterable[str]
+
+
+def env_name_candidates(env_name: EnvNames | None) -> tuple[str, ...]:
+    if not env_name:
+        return ()
+    if isinstance(env_name, str):
+        return (env_name,)
+    return tuple(str(item).strip() for item in env_name if str(item).strip())
+
+
+def configured_env_name(env_name: EnvNames | None) -> str:
+    for name in env_name_candidates(env_name):
+        value = os.getenv(name)
+        if value is not None and str(value).strip() != "":
+            return name
+    return ""
+
+
+def configured_env_value(env_name: EnvNames | None) -> Any:
+    active = configured_env_name(env_name)
+    return os.getenv(active) if active else _MISSING
+
+
 def settings_file_path() -> Path:
-    configured = os.getenv(SETTINGS_FILE_ENV, "").strip()
+    configured = configured_env_value((SETTINGS_FILE_ENV, LEGACY_SETTINGS_FILE_ENV))
+    if configured is _MISSING:
+        configured = ""
+    else:
+        configured = str(configured).strip()
     if configured:
         return Path(configured).expanduser()
     return _default_settings_root() / "settings.json"
@@ -69,21 +99,21 @@ def get_app_settings_store() -> AppSettingsStore:
     return _STORE
 
 
-def configured_value(key: str, env_name: str | None = None, default: Any = None) -> Any:
+def configured_value(key: str, env_name: EnvNames | None = None, default: Any = None) -> Any:
     if env_name:
-        value = os.getenv(env_name)
-        if value is not None and str(value).strip() != "":
+        value = configured_env_value(env_name)
+        if value is not _MISSING:
             return value
     value = get_app_settings_store().get(key, _MISSING)
     return default if value is _MISSING else value
 
 
-def configured_text(key: str, env_name: str | None = None, default: str = "") -> str:
+def configured_text(key: str, env_name: EnvNames | None = None, default: str = "") -> str:
     value = configured_value(key, env_name, default)
     return "" if value is None else str(value)
 
 
-def configured_int(key: str, env_name: str | None = None, default: int = 0) -> int:
+def configured_int(key: str, env_name: EnvNames | None = None, default: int = 0) -> int:
     value = configured_value(key, env_name, default)
     try:
         return int(value)
@@ -93,7 +123,7 @@ def configured_int(key: str, env_name: str | None = None, default: int = 0) -> i
 
 def configured_bool(
     key: str,
-    env_name: str | None = None,
+    env_name: EnvNames | None = None,
     default: bool | None = False,
 ) -> bool | None:
     value = configured_value(key, env_name, _MISSING)
@@ -115,8 +145,8 @@ def parse_bool(value: Any, default: bool | None = False) -> bool | None:
     return default
 
 
-def setting_source(key: str, env_name: str | None = None) -> str:
-    if env_name and os.getenv(env_name) is not None and str(os.getenv(env_name)).strip() != "":
+def setting_source(key: str, env_name: EnvNames | None = None) -> str:
+    if configured_env_name(env_name):
         return "env"
     if key in get_app_settings_store().all():
         return "settings"
@@ -125,7 +155,7 @@ def setting_source(key: str, env_name: str | None = None) -> str:
 
 def _default_settings_root() -> Path:
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "PyDesktopTools"
+        return Path.home() / "Library" / "Application Support" / "Suishou"
     if sys.platform == "win32":
-        return Path(os.getenv("APPDATA", str(Path.home()))) / "PyDesktopTools"
-    return Path.home() / ".local" / "share" / "py-desktop-tools"
+        return Path(os.getenv("APPDATA", str(Path.home()))) / "Suishou"
+    return Path.home() / ".local" / "share" / "suishou"

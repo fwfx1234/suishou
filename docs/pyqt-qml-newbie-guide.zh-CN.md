@@ -1316,7 +1316,7 @@ function onJsonProcessed(text, errorText) {
 可以开启热重载：
 
 ```powershell
-$env:PY_DESKTOP_QML_HOT_RELOAD = "1"
+$env:SUISHOU_QML_HOT_RELOAD = "1"
 uv run app
 ```
 

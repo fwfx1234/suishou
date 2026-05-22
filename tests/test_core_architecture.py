@@ -533,10 +533,10 @@ class LauncherRuntimeCoordinatorTests(unittest.TestCase):
 class ClipboardServiceTests(unittest.TestCase):
     def test_latest_context_item_prefers_captured_item(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            old_data_dir = os.environ.get("PY_DESKTOP_TOOLS_DATA_DIR")
-            old_log_dir = os.environ.get("PY_DESKTOP_TOOLS_LOG_DIR")
-            os.environ["PY_DESKTOP_TOOLS_DATA_DIR"] = str(Path(tmp) / "data")
-            os.environ["PY_DESKTOP_TOOLS_LOG_DIR"] = str(ROOT / ".tmp" / "test_logs")
+            old_data_dir = os.environ.get("SUISHOU_DATA_DIR")
+            old_log_dir = os.environ.get("SUISHOU_LOG_DIR")
+            os.environ["SUISHOU_DATA_DIR"] = str(Path(tmp) / "data")
+            os.environ["SUISHOU_LOG_DIR"] = str(ROOT / ".tmp" / "test_logs")
             storage = StorageManager(Path(tmp))
             try:
                 service = ClipboardService(
@@ -564,13 +564,13 @@ class ClipboardServiceTests(unittest.TestCase):
                 if "service" in locals():
                     service.close()
                 if old_data_dir is None:
-                    os.environ.pop("PY_DESKTOP_TOOLS_DATA_DIR", None)
+                    os.environ.pop("SUISHOU_DATA_DIR", None)
                 else:
-                    os.environ["PY_DESKTOP_TOOLS_DATA_DIR"] = old_data_dir
+                    os.environ["SUISHOU_DATA_DIR"] = old_data_dir
                 if old_log_dir is None:
-                    os.environ.pop("PY_DESKTOP_TOOLS_LOG_DIR", None)
+                    os.environ.pop("SUISHOU_LOG_DIR", None)
                 else:
-                    os.environ["PY_DESKTOP_TOOLS_LOG_DIR"] = old_log_dir
+                    os.environ["SUISHOU_LOG_DIR"] = old_log_dir
 
     def test_repeated_clip_replaces_old_entry_and_preserves_pin(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -807,20 +807,20 @@ class WindowsHotkeyTests(unittest.TestCase):
         manager = WinHotkeyManager(hotkey="Alt+Space")
         manager._native_registered = True
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("PY_DESKTOP_TOOLS_HOTKEY_HOOK", None)
+            os.environ.pop("SUISHOU_HOTKEY_HOOK", None)
             self.assertTrue(manager._should_enable_fallback())
         manager = WinHotkeyManager(hotkey="Ctrl+Alt+K", hotkey_id=9)
         manager._native_registered = True
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("PY_DESKTOP_TOOLS_HOTKEY_HOOK", None)
+            os.environ.pop("SUISHOU_HOTKEY_HOOK", None)
             self.assertFalse(manager._should_enable_fallback())
-        with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_HOTKEY_HOOK": "1"}, clear=False):
+        with patch.dict(os.environ, {"SUISHOU_HOTKEY_HOOK": "1"}, clear=False):
             self.assertTrue(manager._should_enable_fallback())
         manager._native_registered = False
-        with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_HOTKEY_HOOK": "0"}, clear=False):
+        with patch.dict(os.environ, {"SUISHOU_HOTKEY_HOOK": "0"}, clear=False):
             self.assertFalse(manager._should_enable_fallback())
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("PY_DESKTOP_TOOLS_HOTKEY_HOOK", None)
+            os.environ.pop("SUISHOU_HOTKEY_HOOK", None)
             self.assertTrue(manager._should_enable_fallback())
 
 
@@ -931,7 +931,7 @@ class SystemSettingsViewModelTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             settings_file = Path(tmp) / "settings.json"
-            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(settings_file)}, clear=False):
+            with patch.dict(os.environ, {"SUISHOU_SETTINGS_FILE": str(settings_file)}, clear=False):
                 vm = SystemSettingsViewModel()
                 self.assertFalse(vm.restartRequired)
                 self.assertTrue(vm.setSetting("logging.retentionDays", 14))
@@ -965,7 +965,7 @@ class SystemSettingsViewModelTests(unittest.TestCase):
 
         clipboard = Clipboard()
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
+            with patch.dict(os.environ, {"SUISHOU_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
                 vm = SystemSettingsViewModel(clipboard=clipboard)
                 self.assertTrue(vm.setSetting("clipboard.captureText", False))
                 self.assertFalse(clipboard.config["capture_text"])

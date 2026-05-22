@@ -4,6 +4,9 @@ function Invoke-Python {
     param([string[]]$PythonArgs)
 
     $candidates = @()
+    if ($env:SUISHOU_PYTHON) {
+        $candidates += [pscustomobject]@{ Exe = $env:SUISHOU_PYTHON; Prefix = @() }
+    }
     if ($env:PY_DESKTOP_TOOLS_PYTHON) {
         $candidates += [pscustomobject]@{ Exe = $env:PY_DESKTOP_TOOLS_PYTHON; Prefix = @() }
     }

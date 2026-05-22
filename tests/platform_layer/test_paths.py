@@ -10,33 +10,48 @@ from app.paths import MacOSAppPaths, NoopAppPaths, WindowsAppPaths
 
 def test_macos_user_data_dir_uses_library_application_support() -> None:
     paths = MacOSAppPaths()
-    expected = Path.home() / "Library" / "Application Support" / "PyDesktopTools"
+    expected = Path.home() / "Library" / "Application Support" / "Suishou"
     assert paths.user_data_dir() == expected
 
 
 def test_windows_user_data_dir_uses_appdata(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.delenv("SUISHOU_DATA_DIR", raising=False)
     monkeypatch.delenv("PY_DESKTOP_TOOLS_DATA_DIR", raising=False)
     paths = WindowsAppPaths()
-    assert paths.user_data_dir() == tmp_path / "PyDesktopTools"
+    assert paths.user_data_dir() == tmp_path / "Suishou"
 
 
 def test_noop_user_data_dir_uses_local_share() -> None:
     paths = NoopAppPaths()
-    expected = Path.home() / ".local" / "share" / "py-desktop-tools"
+    expected = Path.home() / ".local" / "share" / "suishou"
     assert paths.user_data_dir() == expected
 
 
 def test_data_dir_env_var_overrides_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("PY_DESKTOP_TOOLS_DATA_DIR", str(tmp_path / "custom"))
+    monkeypatch.setenv("SUISHOU_DATA_DIR", str(tmp_path / "custom"))
     paths = MacOSAppPaths()
     assert paths.user_data_dir() == tmp_path / "custom"
 
 
+def test_legacy_data_dir_env_var_still_overrides_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("SUISHOU_DATA_DIR", raising=False)
+    monkeypatch.setenv("PY_DESKTOP_TOOLS_DATA_DIR", str(tmp_path / "legacy"))
+    paths = MacOSAppPaths()
+    assert paths.user_data_dir() == tmp_path / "legacy"
+
+
+def test_new_data_dir_env_var_wins_over_legacy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("SUISHOU_DATA_DIR", str(tmp_path / "new"))
+    monkeypatch.setenv("PY_DESKTOP_TOOLS_DATA_DIR", str(tmp_path / "legacy"))
+    paths = MacOSAppPaths()
+    assert paths.user_data_dir() == tmp_path / "new"
+
+
 def test_feature_output_dir_preserves_case() -> None:
     paths = MacOSAppPaths()
-    assert paths.feature_output_dir("QR") == Path.home() / "Downloads" / "PyDesktopTools" / "QR"
-    assert paths.feature_output_dir("Downloads") == Path.home() / "Downloads" / "PyDesktopTools" / "Downloads"
+    assert paths.feature_output_dir("QR") == Path.home() / "Downloads" / "Suishou" / "QR"
+    assert paths.feature_output_dir("Downloads") == Path.home() / "Downloads" / "Suishou" / "Downloads"
 
 
 def test_windows_downloads_uses_user_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -50,12 +65,22 @@ def test_windows_downloads_uses_user_profile(monkeypatch: pytest.MonkeyPatch, tm
 def test_plugin_dirs_uses_pathsep_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     a = tmp_path / "a"
     b = tmp_path / "b"
+    monkeypatch.setenv("SUISHOU_PLUGIN_DIR", os.pathsep.join([str(a), str(b)]))
+    paths = MacOSAppPaths()
+    assert paths.plugin_dirs() == [a, b]
+
+
+def test_legacy_plugin_dirs_env_var_still_works(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("SUISHOU_PLUGIN_DIR", raising=False)
+    a = tmp_path / "legacy-a"
+    b = tmp_path / "legacy-b"
     monkeypatch.setenv("PY_DESKTOP_TOOLS_PLUGIN_DIR", os.pathsep.join([str(a), str(b)]))
     paths = MacOSAppPaths()
     assert paths.plugin_dirs() == [a, b]
 
 
 def test_plugin_dirs_falls_back_to_project_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SUISHOU_PLUGIN_DIR", raising=False)
     monkeypatch.delenv("PY_DESKTOP_TOOLS_PLUGIN_DIR", raising=False)
     paths = MacOSAppPaths()
     dirs = paths.plugin_dirs()
@@ -64,7 +89,7 @@ def test_plugin_dirs_falls_back_to_project_root(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_cache_dir_is_subdir_of_user_data(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("PY_DESKTOP_TOOLS_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SUISHOU_DATA_DIR", str(tmp_path))
     paths = NoopAppPaths()
     cache = paths.cache_dir()
     assert cache == tmp_path / "cache"

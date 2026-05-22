@@ -41,7 +41,7 @@ def default_bundled_plugin_dirs() -> list[Path]:
 def default_external_plugin_dirs() -> list[Path]:
     """Return user/plugin search directories without creating them."""
 
-    configured = configured_text("paths.pluginDirs", "PY_DESKTOP_TOOLS_PLUGIN_DIR").strip()
+    configured = configured_text("paths.pluginDirs", ("SUISHOU_PLUGIN_DIR", "PY_DESKTOP_TOOLS_PLUGIN_DIR")).strip()
     if configured:
         return [
             Path(item).expanduser()

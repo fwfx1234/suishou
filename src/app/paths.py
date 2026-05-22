@@ -18,8 +18,8 @@ from app.settings import configured_text
 
 
 class AppPathsBase:
-    DATA_DIR_ENV = "PY_DESKTOP_TOOLS_DATA_DIR"
-    PLUGIN_DIR_ENV = "PY_DESKTOP_TOOLS_PLUGIN_DIR"
+    DATA_DIR_ENV = ("SUISHOU_DATA_DIR", "PY_DESKTOP_TOOLS_DATA_DIR")
+    PLUGIN_DIR_ENV = ("SUISHOU_PLUGIN_DIR", "PY_DESKTOP_TOOLS_PLUGIN_DIR")
 
     def project_root(self) -> Path:
         return Path(__file__).resolve().parents[2]
@@ -66,7 +66,7 @@ class AppPathsBase:
         return Path.home() / "Documents"
 
     def feature_output_dir(self, feature_id: str) -> Path:
-        return self.downloads_dir() / "PyDesktopTools" / feature_id
+        return self.downloads_dir() / "Suishou" / feature_id
 
     def _default_user_data_dir(self) -> Path:
         raise NotImplementedError
@@ -74,12 +74,12 @@ class AppPathsBase:
 
 class MacOSAppPaths(AppPathsBase):
     def _default_user_data_dir(self) -> Path:
-        return Path.home() / "Library" / "Application Support" / "PyDesktopTools"
+        return Path.home() / "Library" / "Application Support" / "Suishou"
 
 
 class WindowsAppPaths(AppPathsBase):
     def _default_user_data_dir(self) -> Path:
-        return Path(os.getenv("APPDATA", str(Path.home()))) / "PyDesktopTools"
+        return Path(os.getenv("APPDATA", str(Path.home()))) / "Suishou"
 
     def downloads_dir(self) -> Path:
         return self._user_profile() / "Downloads"
@@ -100,7 +100,7 @@ class WindowsAppPaths(AppPathsBase):
 
 class NoopAppPaths(AppPathsBase):
     def _default_user_data_dir(self) -> Path:
-        return Path.home() / ".local" / "share" / "py-desktop-tools"
+        return Path.home() / ".local" / "share" / "suishou"
 
 
 _default_paths: AppPathsBase | None = None

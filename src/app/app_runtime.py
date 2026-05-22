@@ -77,7 +77,7 @@ class ApplicationRuntime:
         app_context.start()
         self._log.debug("app.context.start_complete", "应用上下文启动完成", elapsedMs=int((perf_counter() - start_started_at) * 1000))
 
-        if configured_bool("developer.qmlHotReload", "PY_DESKTOP_QML_HOT_RELOAD", False):
+        if configured_bool("developer.qmlHotReload", ("SUISHOU_QML_HOT_RELOAD", "PY_DESKTOP_QML_HOT_RELOAD"), False):
             hot_reload_started_at = perf_counter()
             hot_reloader = QmlHotReloader(
                 app_context.engine,

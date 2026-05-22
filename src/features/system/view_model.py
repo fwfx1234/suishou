@@ -12,7 +12,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 from app.paths import data_dir, plugin_dirs
 from app.plugins.manifest_loader import load_all_plugin_manifests
 from app.services.clipboard.models import DEFAULT_CLIPBOARD_CONFIG
-from app.settings import configured_bool, configured_int, configured_text, get_app_settings_store, parse_bool, setting_source
+from app.settings import configured_bool, configured_env_name, configured_int, configured_text, get_app_settings_store, parse_bool, setting_source
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,26 +27,31 @@ class SettingSpec:
     options: tuple[str, ...] = ()
     minimum: int | None = None
     maximum: int | None = None
+    legacy_env: tuple[str, ...] = ()
+
+    @property
+    def env_names(self) -> tuple[str, ...]:
+        return (self.env, *self.legacy_env) if self.env else self.legacy_env
 
 
 SETTING_SPECS = [
-    SettingSpec("paths.dataDir", "数据目录", "path", "", "PY_DESKTOP_TOOLS_DATA_DIR", True, "存放数据库、缓存和设置文件。"),
-    SettingSpec("logging.logDir", "日志路径", "path", "", "PY_DESKTOP_TOOLS_LOG_DIR", True, "app.log、error.log、qt.log 与插件日志目录。"),
-    SettingSpec("paths.pluginDirs", "外部插件目录", "pathList", "", "PY_DESKTOP_TOOLS_PLUGIN_DIR", True, "多个目录使用系统路径分隔符连接。"),
-    SettingSpec("developer.qmlHotReload", "QML 热重载", "bool", False, "PY_DESKTOP_QML_HOT_RELOAD", True, "开发时监听 QML 文件变更并重载。"),
-    SettingSpec("logging.console", "控制台日志", "bool", None, "PY_DESKTOP_TOOLS_LOG_CONSOLE", True, "是否同时输出日志到终端。"),
-    SettingSpec("logging.consoleLevel", "控制台日志等级", "choice", "WARNING", "PY_DESKTOP_TOOLS_LOG_LEVEL", True, "控制终端日志输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")),
-    SettingSpec("logging.fileLevel", "文件日志等级", "choice", "WARNING", "PY_DESKTOP_TOOLS_LOG_FILE_LEVEL", True, "控制 app.log 和插件日志输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")),
-    SettingSpec("logging.qtLevel", "Qt 日志等级", "choice", "WARNING", "PY_DESKTOP_TOOLS_QT_LOG_LEVEL", True, "控制 qt.log 输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")),
-    SettingSpec("logging.retentionDays", "日志保留天数", "int", 7, "PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS", True, "日志滚动文件保留天数。", minimum=1, maximum=365),
-    SettingSpec("plugins.retentionMs", "插件会话保留毫秒", "int", 300000, "PY_DESKTOP_PLUGIN_RETENTION_MS", True, "插件窗口关闭后的状态保留时间。", minimum=1000, maximum=86400000),
+    SettingSpec("paths.dataDir", "数据目录", "path", "", "SUISHOU_DATA_DIR", True, "存放数据库、缓存和设置文件。", legacy_env=("PY_DESKTOP_TOOLS_DATA_DIR",)),
+    SettingSpec("logging.logDir", "日志路径", "path", "", "SUISHOU_LOG_DIR", True, "app.log、error.log、qt.log 与插件日志目录。", legacy_env=("PY_DESKTOP_TOOLS_LOG_DIR",)),
+    SettingSpec("paths.pluginDirs", "外部插件目录", "pathList", "", "SUISHOU_PLUGIN_DIR", True, "多个目录使用系统路径分隔符连接。", legacy_env=("PY_DESKTOP_TOOLS_PLUGIN_DIR",)),
+    SettingSpec("developer.qmlHotReload", "QML 热重载", "bool", False, "SUISHOU_QML_HOT_RELOAD", True, "开发时监听 QML 文件变更并重载。", legacy_env=("PY_DESKTOP_QML_HOT_RELOAD",)),
+    SettingSpec("logging.console", "控制台日志", "bool", None, "SUISHOU_LOG_CONSOLE", True, "是否同时输出日志到终端。", legacy_env=("PY_DESKTOP_TOOLS_LOG_CONSOLE",)),
+    SettingSpec("logging.consoleLevel", "控制台日志等级", "choice", "WARNING", "SUISHOU_LOG_LEVEL", True, "控制终端日志输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"), legacy_env=("PY_DESKTOP_TOOLS_LOG_LEVEL",)),
+    SettingSpec("logging.fileLevel", "文件日志等级", "choice", "WARNING", "SUISHOU_LOG_FILE_LEVEL", True, "控制 app.log 和插件日志输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"), legacy_env=("PY_DESKTOP_TOOLS_LOG_FILE_LEVEL",)),
+    SettingSpec("logging.qtLevel", "Qt 日志等级", "choice", "WARNING", "SUISHOU_QT_LOG_LEVEL", True, "控制 qt.log 输出阈值。", ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"), legacy_env=("PY_DESKTOP_TOOLS_QT_LOG_LEVEL",)),
+    SettingSpec("logging.retentionDays", "日志保留天数", "int", 7, "SUISHOU_LOG_RETENTION_DAYS", True, "日志滚动文件保留天数。", minimum=1, maximum=365, legacy_env=("PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS",)),
+    SettingSpec("plugins.retentionMs", "插件会话保留毫秒", "int", 300000, "SUISHOU_PLUGIN_RETENTION_MS", True, "插件窗口关闭后的状态保留时间。", minimum=1000, maximum=86400000, legacy_env=("PY_DESKTOP_PLUGIN_RETENTION_MS",)),
     SettingSpec("hotkeys.launcher", "启动器热键", "text", "Alt+Space", "", True, "全局唤起启动器的快捷键。"),
     SettingSpec("clipboard.captureText", "剪贴板记录文本", "bool", True, "", False, "是否把文本内容写入剪贴板历史。"),
     SettingSpec("clipboard.captureImage", "剪贴板记录图片", "bool", True, "", False, "是否把图片内容写入剪贴板历史。"),
     SettingSpec("clipboard.captureFiles", "剪贴板记录文件", "bool", True, "", False, "是否把文件路径写入剪贴板历史。"),
     SettingSpec("clipboard.maxTextChars", "剪贴板文本上限", "int", 20000, "", False, "超过该字符数的文本不会进入历史。", minimum=100, maximum=2000000),
     SettingSpec("clipboard.hotkey", "剪贴板热键", "text", "Alt+V", "", False, "打开剪贴板历史窗口的快捷键。"),
-    SettingSpec("hotkeys.windowsFallbackHook", "Windows 低级键盘 Hook", "choice", "", "PY_DESKTOP_TOOLS_HOTKEY_HOOK", True, "控制 Windows 原生热键失败时是否启用低级键盘 Hook。", ("", "always", "never")),
+    SettingSpec("hotkeys.windowsFallbackHook", "Windows 低级键盘 Hook", "choice", "", "SUISHOU_HOTKEY_HOOK", True, "控制 Windows 原生热键失败时是否启用低级键盘 Hook。", ("", "always", "never"), legacy_env=("PY_DESKTOP_TOOLS_HOTKEY_HOOK",)),
 ]
 
 _SPECS_BY_KEY = {item.key: item for item in SETTING_SPECS}
@@ -253,6 +258,8 @@ class SystemSettingsViewModel(QObject):
             "effectiveValue": effective,
             "defaultValue": default,
             "env": spec.env,
+            "activeEnv": configured_env_name(spec.env_names),
+            "legacyEnv": list(spec.legacy_env),
             "source": source,
             "sourceText": self._source_text(source),
             "restartRequired": spec.restart_required,
@@ -284,26 +291,26 @@ class SystemSettingsViewModel(QObject):
     def _capture_runtime_values(self) -> dict[str, Any]:
         return {
             "paths.dataDir": str(data_dir()),
-            "logging.logDir": configured_text("logging.logDir", "PY_DESKTOP_TOOLS_LOG_DIR", str(data_dir() / "logs")),
+            "logging.logDir": configured_text("logging.logDir", ("SUISHOU_LOG_DIR", "PY_DESKTOP_TOOLS_LOG_DIR"), str(data_dir() / "logs")),
             "paths.pluginDirs": os.pathsep.join(str(path) for path in plugin_dirs()),
-            "developer.qmlHotReload": bool(configured_bool("developer.qmlHotReload", "PY_DESKTOP_QML_HOT_RELOAD", False)),
-            "logging.console": bool(configured_bool("logging.console", "PY_DESKTOP_TOOLS_LOG_CONSOLE", not bool(getattr(sys, "frozen", False)))),
-            "logging.consoleLevel": configured_text("logging.consoleLevel", "PY_DESKTOP_TOOLS_LOG_LEVEL", "WARNING"),
-            "logging.fileLevel": configured_text("logging.fileLevel", "PY_DESKTOP_TOOLS_LOG_FILE_LEVEL", "WARNING"),
-            "logging.qtLevel": configured_text("logging.qtLevel", "PY_DESKTOP_TOOLS_QT_LOG_LEVEL", "WARNING"),
-            "logging.retentionDays": configured_int("logging.retentionDays", "PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS", 7),
-            "plugins.retentionMs": configured_int("plugins.retentionMs", "PY_DESKTOP_PLUGIN_RETENTION_MS", 300_000),
+            "developer.qmlHotReload": bool(configured_bool("developer.qmlHotReload", ("SUISHOU_QML_HOT_RELOAD", "PY_DESKTOP_QML_HOT_RELOAD"), False)),
+            "logging.console": bool(configured_bool("logging.console", ("SUISHOU_LOG_CONSOLE", "PY_DESKTOP_TOOLS_LOG_CONSOLE"), not bool(getattr(sys, "frozen", False)))),
+            "logging.consoleLevel": configured_text("logging.consoleLevel", ("SUISHOU_LOG_LEVEL", "PY_DESKTOP_TOOLS_LOG_LEVEL"), "WARNING"),
+            "logging.fileLevel": configured_text("logging.fileLevel", ("SUISHOU_LOG_FILE_LEVEL", "PY_DESKTOP_TOOLS_LOG_FILE_LEVEL"), "WARNING"),
+            "logging.qtLevel": configured_text("logging.qtLevel", ("SUISHOU_QT_LOG_LEVEL", "PY_DESKTOP_TOOLS_QT_LOG_LEVEL"), "WARNING"),
+            "logging.retentionDays": configured_int("logging.retentionDays", ("SUISHOU_LOG_RETENTION_DAYS", "PY_DESKTOP_TOOLS_LOG_RETENTION_DAYS"), 7),
+            "plugins.retentionMs": configured_int("plugins.retentionMs", ("SUISHOU_PLUGIN_RETENTION_MS", "PY_DESKTOP_PLUGIN_RETENTION_MS"), 300_000),
             "hotkeys.launcher": self._launcher_hotkey(),
-            "hotkeys.windowsFallbackHook": configured_text("hotkeys.windowsFallbackHook", "PY_DESKTOP_TOOLS_HOTKEY_HOOK", ""),
+            "hotkeys.windowsFallbackHook": configured_text("hotkeys.windowsFallbackHook", ("SUISHOU_HOTKEY_HOOK", "PY_DESKTOP_TOOLS_HOTKEY_HOOK"), ""),
         }
 
     @staticmethod
     def _default_data_dir() -> str:
         if sys.platform == "darwin":
-            return str(Path.home() / "Library" / "Application Support" / "PyDesktopTools")
+            return str(Path.home() / "Library" / "Application Support" / "Suishou")
         if sys.platform == "win32":
-            return str(Path(os.getenv("APPDATA", str(Path.home()))) / "PyDesktopTools")
-        return str(Path.home() / ".local" / "share" / "py-desktop-tools")
+            return str(Path(os.getenv("APPDATA", str(Path.home()))) / "Suishou")
+        return str(Path.home() / ".local" / "share" / "suishou")
 
     def _launcher_hotkey(self) -> str:
         services = getattr(self._platform, "_services", None)
@@ -342,7 +349,7 @@ class SystemSettingsViewModel(QObject):
     def _source_for_spec(self, spec: SettingSpec) -> str:
         if spec.key.startswith("clipboard."):
             return "settings"
-        return setting_source(spec.key, spec.env)
+        return setting_source(spec.key, spec.env_names)
 
     def _clipboard_service(self) -> object | None:
         services = getattr(self._platform, "_services", None)

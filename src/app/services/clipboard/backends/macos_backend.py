@@ -12,7 +12,7 @@ _foundation = None
 _consts: dict[str, object] = {}
 
 
-SELF_COPY_UTI = "com.py-desktop-tools.clipboard.fromSelf"
+SELF_COPY_UTI = "com.suishou.clipboard.fromSelf"
 
 SENSITIVE_UTIS = frozenset({
     "org.nspasteboard.ConcealedType",

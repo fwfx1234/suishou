@@ -9,7 +9,7 @@ from uuid import uuid4
 from PIL import Image
 
 
-TEMP_OUTPUT_DIR = Path(tempfile.gettempdir()) / "py_desktop_tools_image_compress"
+TEMP_OUTPUT_DIR = Path(tempfile.gettempdir()) / "suishou_image_compress"
 
 
 @dataclass(slots=True)

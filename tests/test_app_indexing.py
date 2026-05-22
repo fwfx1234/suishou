@@ -218,7 +218,7 @@ class SystemSettingsViewModelTests(unittest.TestCase):
         from features.system.view_model import SystemSettingsViewModel
 
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict(os.environ, {"PY_DESKTOP_TOOLS_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
+            with patch.dict(os.environ, {"SUISHOU_SETTINGS_FILE": str(Path(tmp) / "settings.json")}, clear=False):
                 view_model = SystemSettingsViewModel()
                 keys = {item["key"] for item in view_model.settingsItems}
 

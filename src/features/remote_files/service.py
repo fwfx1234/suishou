@@ -44,7 +44,7 @@ class RemoteFilesService:
         self.profiles = RemoteProfileRepository(database)
         self.pool = RemoteConnectionPool()
         self._active_id: str = ""
-        self._edit_root = Path(edit_root) if edit_root is not None else Path(tempfile.gettempdir()) / "py_desktop_tools" / "remote_files_edits"
+        self._edit_root = Path(edit_root) if edit_root is not None else Path(tempfile.gettempdir()) / "suishou" / "remote_files_edits"
 
         self._on_transfers_updated = on_transfers_updated
         self._on_message = on_message

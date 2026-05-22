@@ -144,13 +144,13 @@ class LoggingManager:
     ) -> None:
         self.app_name = app_name
         self.app_version = app_version
-        env_log_dir = configured_text("logging.logDir", "PY_DESKTOP_TOOLS_LOG_DIR").strip()
+        env_log_dir = configured_text("logging.logDir", ("SUISHOU_LOG_DIR", "PY_DESKTOP_TOOLS_LOG_DIR")).strip()
         self.log_dir = Path(env_log_dir).expanduser() if env_log_dir else (log_dir or (data_dir() / "logs"))
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.retention_days = max(1, int(retention_days))
         self.level = self._resolve_level(level)
-        self.file_level = self._resolve_level(file_level if file_level is not None else configured_text("logging.fileLevel", "PY_DESKTOP_TOOLS_LOG_FILE_LEVEL", "WARNING"))
-        self.qt_level = self._resolve_level(qt_level if qt_level is not None else configured_text("logging.qtLevel", "PY_DESKTOP_TOOLS_QT_LOG_LEVEL", "WARNING"))
+        self.file_level = self._resolve_level(file_level if file_level is not None else configured_text("logging.fileLevel", ("SUISHOU_LOG_FILE_LEVEL", "PY_DESKTOP_TOOLS_LOG_FILE_LEVEL"), "WARNING"))
+        self.qt_level = self._resolve_level(qt_level if qt_level is not None else configured_text("logging.qtLevel", ("SUISHOU_QT_LOG_LEVEL", "PY_DESKTOP_TOOLS_QT_LOG_LEVEL"), "WARNING"))
         self._plugin_handlers: dict[str, logging.Handler] = {}
         self._root_handlers: list[logging.Handler] = []
         self._qt_handler: logging.Handler | None = None
@@ -377,7 +377,7 @@ class LoggingManager:
 
 def init_logging(
     *,
-    app_name: str = "py-desktop-tools",
+    app_name: str = "suishou",
     app_version: str = "unknown",
     log_dir: Path | None = None,
     level: str | int = "INFO",

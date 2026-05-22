@@ -5,6 +5,6 @@ from importlib import metadata
 
 def get_app_version() -> str:
     try:
-        return metadata.version("py-desktop-tools")
+        return metadata.version("suishou")
     except Exception:
         return "1.0.0"

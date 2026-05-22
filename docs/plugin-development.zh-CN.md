@@ -1,6 +1,6 @@
-# Py Desktop Tools 插件开发文档（完整版）
+# Suishou 插件开发文档（完整版）
 
-本文档是 py-desktop-tools 插件系统的权威参考。面向自带插件和第三方插件开发者。
+本文档是 suishou 插件系统的权威参考。面向自带插件和第三方插件开发者。
 
 ---
 
@@ -209,7 +209,7 @@ plugins/
 通过环境变量指定外部插件目录：
 
 ```powershell
-$env:PY_DESKTOP_TOOLS_PLUGIN_DIR = "D:\my_plugins;E:\team_plugins"
+$env:SUISHOU_PLUGIN_DIR = "D:\my_plugins;E:\team_plugins"
 ```
 
 多个目录用 `;`（Windows）或 `:`（Linux/macOS）分隔。

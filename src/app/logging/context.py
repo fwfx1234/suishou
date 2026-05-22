@@ -6,7 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 
-_log_context: ContextVar[dict[str, Any]] = ContextVar("py_desktop_tools_log_context", default={})
+_log_context: ContextVar[dict[str, Any]] = ContextVar("suishou_log_context", default={})
 
 
 @contextmanager

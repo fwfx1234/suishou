@@ -1,5 +1,5 @@
 [project]
-name = "py-desktop-tools"
+name = "suishou"
 version = "1.0.0"
 description = "桌面工具箱 - 图片压缩、JSON解析、API测试、下载工具、扫码工具等"
 readme = "README.md"

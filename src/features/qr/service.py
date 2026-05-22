@@ -28,7 +28,7 @@ class QrService:
         if not content.strip():
             return ""
         image = self._render(content)
-        temp = Path(tempfile.gettempdir()) / "py_desktop_tools_qr_preview.png"
+        temp = Path(tempfile.gettempdir()) / "suishou_qr_preview.png"
         image.save(temp)
         return temp.as_posix()
 

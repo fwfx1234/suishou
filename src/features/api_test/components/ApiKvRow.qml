@@ -43,7 +43,7 @@ Rectangle {
         "authorization": ["Bearer {{token}}", "Basic "],
         "content-type": ["application/json", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain", "application/xml"],
         "cache-control": ["no-cache", "no-store", "max-age=0"],
-        "user-agent": ["Mozilla/5.0", "PyDesktopTools"],
+        "user-agent": ["Mozilla/5.0", "Suishou"],
         "x-requested-with": ["XMLHttpRequest"],
         "accept-language": ["zh-CN,zh;q=0.9", "en-US,en;q=0.9"],
         "accept-encoding": ["gzip, deflate, br"],

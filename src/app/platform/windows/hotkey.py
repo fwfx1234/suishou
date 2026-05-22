@@ -212,7 +212,7 @@ class WinHotkeyManager(QObject):
         self.hotkeyPressed.emit()
 
     def _should_enable_fallback(self) -> bool:
-        value = configured_text("hotkeys.windowsFallbackHook", "PY_DESKTOP_TOOLS_HOTKEY_HOOK").strip().lower()
+        value = configured_text("hotkeys.windowsFallbackHook", ("SUISHOU_HOTKEY_HOOK", "PY_DESKTOP_TOOLS_HOTKEY_HOOK")).strip().lower()
         if value in {"1", "true", "yes", "on", "always"}:
             return True
         if value in {"0", "false", "no", "off", "never"}:

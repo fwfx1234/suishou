@@ -1,6 +1,6 @@
-# PySide6 + QML 系列教程 —— 基于 py-desktop-tools 项目
+# PySide6 + QML 系列教程 —— 基于 suishou 项目
 
-本教程以 **py-desktop-tools** 项目为真实案例，逐步解释 PySide6 + QML 桌面开发、MVVM 分层和插件系统。
+本教程以 **suishou** 项目为真实案例，逐步解释 PySide6 + QML 桌面开发、MVVM 分层和插件系统。
 
 **适用人群**：有 Python 基础，想系统学习 PySide6 + QML 桌面开发，希望了解类 uTools 启动器、插件系统、MVVM 架构的开发者。
 

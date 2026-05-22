@@ -37,7 +37,7 @@ Flickable {
                     ColumnLayout { spacing: 6
                         Label { text: "名称: 演示项目"; font.pixelSize: 14; color: Theme.token("color-text-primary", dark) }
                         Label { text: "版本: 1.0.0"; font.pixelSize: 14; color: Theme.token("color-text-primary", dark) }
-                        Label { text: "作者: Py Desktop Tools"; font.pixelSize: 14; color: Theme.token("color-text-primary", dark) }
+                        Label { text: "作者: Suishou"; font.pixelSize: 14; color: Theme.token("color-text-primary", dark) }
                         Item { Layout.fillHeight: true } }
                     ColumnLayout { spacing: 6
                         RowLayout { Label { text: "自动更新"; font.pixelSize: 13; color: Theme.token("color-text-primary", dark); Layout.fillWidth: true } UiSwitch { dark: dark; checked: true } }

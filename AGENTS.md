@@ -19,14 +19,14 @@ uv run python -m compileall src      # quick Python syntax check
 QML hot reload:
 
 ```bash
-PY_DESKTOP_QML_HOT_RELOAD=1 uv run app
+SUISHOU_QML_HOT_RELOAD=1 uv run app
 ```
 
 Useful runtime env vars:
-- `PY_DESKTOP_TOOLS_DATA_DIR` overrides startup/storage data directory.
-- `PY_DESKTOP_TOOLS_PLUGIN_DIR` adds external plugin roots, separated by `os.pathsep`.
-- `PY_DESKTOP_PLUGIN_RETENTION_MS` changes retained plugin-session timeout for debugging.
-- `PY_DESKTOP_TOOLS_LOG_LEVEL` and `PY_DESKTOP_TOOLS_LOG_CONSOLE` control app logging.
+- `SUISHOU_DATA_DIR` overrides startup/storage data directory.
+- `SUISHOU_PLUGIN_DIR` adds external plugin roots, separated by `os.pathsep`.
+- `SUISHOU_PLUGIN_RETENTION_MS` changes retained plugin-session timeout for debugging.
+- `SUISHOU_LOG_LEVEL` and `SUISHOU_LOG_CONSOLE` control app logging.
 
 PowerShell smoke scripts still exist under `scripts/`, but this repo is currently developed from macOS/zsh. Prefer the `uv run ...` commands above on macOS.
 
@@ -62,7 +62,7 @@ Startup path:
 
 ## Plugin System
 
-- Bundled plugins live under `src/features/`; external plugins default to `plugins/` or `PY_DESKTOP_TOOLS_PLUGIN_DIR`.
+- Bundled plugins live under `src/features/`; external plugins default to `plugins/` or `SUISHOU_PLUGIN_DIR`.
 - A plugin package can expose `plugin.json` or one or more `*.plugin.json` files.
 - Manifest discovery is in `src/app/plugins/manifest_loader.py`; bundled manifests load before external manifests, and earlier duplicate plugin IDs win.
 - `entrypoint: "runtime:create_runtime"` means module `runtime.py`, factory `create_runtime`. Feature-local relative imports are supported through synthetic package names in `PluginManager._import_module()`.
@@ -129,7 +129,7 @@ Plugin ViewModels are injected only while a session is active or retained. The p
 
 ## Storage, Logging, And Data
 
-- `StorageManager` owns app/plugin SQLite storage; startup data lives under `data/` unless `PY_DESKTOP_TOOLS_DATA_DIR` is set.
+- `StorageManager` owns app/plugin SQLite storage; startup data lives under `data/` unless `SUISHOU_DATA_DIR` is set.
 - Command indexing uses `CommandIndexDb` and is refreshed at startup and periodically in the background.
 - Logging is structured through `app.logging`; app startup installs the Qt message handler.
 - Avoid printing from runtime code unless it is intentionally part of a CLI/debug path.
