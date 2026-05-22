@@ -114,29 +114,31 @@ ColumnLayout {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 42
+                Layout.preferredHeight: 40
                 color: root.panelBg
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.space["2"]
+                    anchors.leftMargin: Theme.space["2.5"]
                     anchors.rightMargin: Theme.space["2"]
                     spacing: Theme.space["2"]
 
                     Rectangle {
-                        Layout.preferredWidth: Math.max(54, statusLabel.implicitWidth + Theme.space["3"])
+                        Layout.preferredWidth: Math.max(54, statusLabel.implicitWidth + 18)
                         Layout.preferredHeight: 24
-                        radius: Theme.radii.xs
-                        color: Qt.rgba(root.outcomeColor().r, root.outcomeColor().g, root.outcomeColor().b, root.dark ? 0.24 : 0.12)
+                        radius: 7
+                        color: root.dark ? Qt.rgba(1, 1, 1, 0.045) : "#F6F7F9"
                         border.width: 1
-                        border.color: Qt.rgba(root.outcomeColor().r, root.outcomeColor().g, root.outcomeColor().b, 0.36)
+                        border.color: root.responseHasContent()
+                            ? Qt.rgba(root.outcomeColor().r, root.outcomeColor().g, root.outcomeColor().b, root.dark ? 0.42 : 0.28)
+                            : Theme.token("color-border-default", root.dark)
                         Label {
                             id: statusLabel
                             anchors.centerIn: parent
                             text: root.statusText()
-                            color: root.outcomeColor()
-                            font.pixelSize: Theme.fontSize.caption
+                            color: root.responseHasContent() ? root.outcomeColor() : root.textSubtle
+                            font.pixelSize: 12
                             font.family: Theme.fontFamily.mono
-                            font.bold: true
+                            font.weight: Font.DemiBold
                         }
                     }
 

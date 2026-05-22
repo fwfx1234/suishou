@@ -80,7 +80,7 @@ Rectangle {
                         height: 14
                         iconSize: 14
                         useQta: true
-                        name: "mdi6.code-json"
+                        name: "mdi6.magic-staff"
                         color: Theme.token("color-primary-active", root.dark)
                     }
                 }

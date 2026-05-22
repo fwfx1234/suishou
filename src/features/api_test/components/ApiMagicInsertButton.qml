@@ -44,7 +44,7 @@ Rectangle {
         width: 16
         height: 16
         useQta: true
-        name: "mdi6.code-json"
+        name: "mdi6.magic-staff"
         color: magicPopup.opened ? Theme.token("color-primary-active", root.dark) : Theme.token("color-text-secondary", root.dark)
         iconSize: 16
     }

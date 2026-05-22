@@ -36,8 +36,8 @@ Rectangle {
 
     Flickable {
         anchors.fill: parent
-        anchors.leftMargin: Theme.space["2.5"]
-        anchors.rightMargin: Theme.space["2.5"]
+        anchors.leftMargin: Theme.space["2"]
+        anchors.rightMargin: Theme.space["2"]
         clip: true
         interactive: contentWidth > width
         boundsBehavior: Flickable.StopAtBounds
@@ -47,7 +47,7 @@ Rectangle {
         Row {
             id: tabRow
             height: parent.height
-            spacing: Theme.space["1"]
+            spacing: 2
 
             Repeater {
                 model: root.tabModel
@@ -58,25 +58,27 @@ Rectangle {
 
                     property bool active: index === root.currentTab
 
-                    width: Math.max(48, tabContent.implicitWidth + Theme.space["3"])
-                    height: tabRow.height - 4
+                    width: Math.max(54, tabContent.implicitWidth + Theme.space["3"])
+                    height: 28
                     anchors.verticalCenter: parent.verticalCenter
-                    radius: Theme.radii.xs
+                    radius: Theme.radii.md
                     color: active
-                        ? Theme.token("color-bg-subtle", root.dark)
+                        ? (root.dark ? Theme.token("color-primary-soft", true) : Theme.token("color-primary-bg", false))
                         : (tabMouse.containsMouse ? Theme.token("color-bg-subtle-2", root.dark) : "transparent")
+                    border.width: active ? 1 : 0
+                    border.color: active ? Qt.rgba(Theme.token("color-primary-active", root.dark).r, Theme.token("color-primary-active", root.dark).g, Theme.token("color-primary-active", root.dark).b, root.dark ? 0.34 : 0.22) : "transparent"
 
                     Row {
                         id: tabContent
                         anchors.centerIn: parent
-                        spacing: 5
+                        spacing: 6
                         Image {
-                            width: 13
-                            height: 13
+                            width: 14
+                            height: 14
                             anchors.verticalCenter: parent.verticalCenter
-                            source: "image://qta/" + modelData.icon + ";color=" + ("" + (tabItem.active ? Theme.token("color-primary-active", root.dark) : root.textMain)).replace("#", "") + ";size=13"
-                            sourceSize.width: 13
-                            sourceSize.height: 13
+                            source: "image://qta/" + modelData.icon + ";color=" + ("" + (tabItem.active ? Theme.token("color-primary-active", root.dark) : root.textMuted)).replace("#", "") + ";size=14"
+                            sourceSize.width: 14
+                            sourceSize.height: 14
                             fillMode: Image.PreserveAspectFit
                         }
                         Label {
@@ -85,15 +87,15 @@ Rectangle {
                                 ? Theme.token("color-primary-active", root.dark)
                                 : root.textMain
                             font.pixelSize: Theme.fontSize.caption
-                            font.bold: false
+                            font.weight: tabItem.active ? Font.DemiBold : Font.Normal
                         }
                         Rectangle {
                             visible: root.countAt(index) > 0
-                            width: Math.max(16, tabCountLabel.implicitWidth + 8)
+                            width: Math.max(18, tabCountLabel.implicitWidth + 8)
                             height: 16
-                            radius: Theme.radii.xs
+                            radius: 8
                             color: tabItem.active
-                                ? Qt.rgba(Theme.token("color-primary-active", root.dark).r, Theme.token("color-primary-active", root.dark).g, Theme.token("color-primary-active", root.dark).b, root.dark ? 0.26 : 0.12)
+                                ? Qt.rgba(Theme.token("color-primary-active", root.dark).r, Theme.token("color-primary-active", root.dark).g, Theme.token("color-primary-active", root.dark).b, root.dark ? 0.22 : 0.10)
                                 : Theme.token("color-bg-subtle-2", root.dark)
                             border.width: tabItem.active ? 1 : 0
                             border.color: Theme.token("color-primary-active", root.dark)
@@ -106,15 +108,6 @@ Rectangle {
                                 font.family: Theme.fontFamily.mono
                             }
                         }
-                    }
-
-                    Rectangle {
-                        visible: tabItem.active
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Theme.token("color-primary-active", root.dark)
                     }
 
                     MouseArea {

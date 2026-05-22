@@ -145,6 +145,8 @@ Item {
                     text: "魔法参数"
                     dark: root.dark
                     variant: root.showMagicPanel ? "primary" : "secondary"
+                    iconName: "mdi6.magic-staff"
+                    iconSize: 14
                     implicitWidth: 86
                     implicitHeight: 28
                     visible: !root.usesBodyFormRows() && !root.currentBodyModeIndexIsFile(root.currentBodyMode)
