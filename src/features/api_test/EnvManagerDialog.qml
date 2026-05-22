@@ -20,13 +20,17 @@ Dialog {
     property color surface: Theme.token("color-bg-surface", dark)
     property color subtle: dark ? Theme.token("color-bg-subtle-2", true) : "#F5F6F8"
     property color panel: dark ? Theme.token("color-bg-subtle", true) : "#FAFBFC"
+    property color sidebarSurface: dark ? Qt.rgba(1, 1, 1, 0.045) : "#F2F4F7"
+    property color toolbarSurface: dark ? Qt.rgba(1, 1, 1, 0.035) : "#FBFBFD"
+    property color hairline: dark ? Qt.rgba(1, 1, 1, 0.075) : Qt.rgba(60, 60, 67, 0.10)
+    property color selectedFill: dark ? Qt.rgba(10, 132, 255, 0.18) : Qt.rgba(10, 132, 255, 0.12)
     property color borderColor: Theme.token("color-border-default", dark)
     property color textMain: Theme.token("color-text-primary", dark)
     property color textMuted: Theme.token("color-text-regular", dark)
     property color textSubtle: Theme.token("color-text-secondary", dark)
     property var detailTabs: [
-        { title: "变量", kind: "variables", addText: "新增变量", keyTitle: "变量名", valueTitle: "变量值", emptyText: "暂无环境变量" },
-        { title: "Headers", kind: "headers", addText: "新增 Header", keyTitle: "Header 名", valueTitle: "Header 值", emptyText: "暂无公共 Header" }
+        { title: "变量", kind: "variables", addText: "新增变量", keyTitle: "变量名", valueTitle: "变量值", emptyText: "暂无环境变量", icon: "mdi6.variable" },
+        { title: "Headers", kind: "headers", addText: "新增 Header", keyTitle: "Header 名", valueTitle: "Header 值", emptyText: "暂无公共 Header", icon: "mdi6.format-header-pound" }
     ]
 
     signal environmentsSaved(var envs, int selectedIndex)
@@ -34,8 +38,8 @@ Dialog {
     modal: true
     title: ""
     standardButtons: Dialog.NoButton
-    width: Math.min(980, Overlay.overlay ? Overlay.overlay.width * 0.78 : 980)
-    height: Math.min(620, Overlay.overlay ? Overlay.overlay.height * 0.82 : 620)
+    width: Math.min(980, Overlay.overlay ? Overlay.overlay.width * 0.76 : 980)
+    height: Math.min(640, Overlay.overlay ? Overlay.overlay.height * 0.82 : 640)
     padding: 0
 
     function clone(value) {
@@ -110,6 +114,14 @@ Dialog {
     function currentRows() {
         var tab = dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]
         return currentEnvironment()[tab.kind] || []
+    }
+
+    function detailCounts() {
+        var env = currentEnvironment()
+        return [
+            (env.variables || []).length,
+            (env.headers || []).length
+        ]
     }
 
     function updateCurrentEnvironment(field, value) {
@@ -290,17 +302,19 @@ Dialog {
         onTriggered: dialog.save(false)
     }
 
-    background: Rectangle {
-        color: dialog.surface
-        radius: 12
-        border.width: 1
-        border.color: dialog.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.08)
+    background: UiPopupSurface {
+        dark: dialog.dark
+        radius: Theme.radii.sheet
+        fillColor: dialog.surface
+        borderWidth: 1
+        borderColor: dialog.dark ? Qt.rgba(1, 1, 1, 0.14) : Qt.rgba(0, 0, 0, 0.10)
     }
 
     contentItem: Rectangle {
         color: dialog.surface
-        radius: 12
+        radius: Theme.radii.sheet
         clip: true
+        antialiasing: true
 
         ColumnLayout {
             anchors.fill: parent
@@ -308,40 +322,41 @@ Dialog {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 44
-                color: dialog.surface
+                Layout.preferredHeight: 48
+                color: dialog.toolbarSurface
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.space["3"]
-                    anchors.rightMargin: Theme.space["2.5"]
+                    anchors.leftMargin: Theme.space["4"]
+                    anchors.rightMargin: Theme.space["3"]
                     spacing: Theme.space["2"]
 
                     Label {
                         text: "环境管理"
                         Layout.fillWidth: true
                         color: dialog.textMain
-                        font.pixelSize: Theme.fontSize.heading
+                        font.pixelSize: 16
                         font.weight: Font.DemiBold
                     }
 
-                    Label {
+                    UiBadge {
                         text: dialog.draftEnvironments.length + " 个环境"
-                        color: dialog.textSubtle
-                        font.pixelSize: Theme.fontSize.caption
+                        dark: dialog.dark
+                        badgeColor: dialog.dark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(60, 60, 67, 0.08)
+                        textColor: dialog.textSubtle
                     }
 
-                    UiButton {
-                        text: "关闭"
+                    UiIconButton {
                         dark: dialog.dark
-                        variant: "ghost"
-                        implicitWidth: 52
-                        implicitHeight: 28
+                        controlSize: 28
+                        iconSize: 14
+                        iconName: "mdi6.close"
+                        tooltip: "关闭"
                         onClicked: dialog.close()
                     }
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.subtle }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.hairline }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -349,14 +364,17 @@ Dialog {
                 spacing: 0
 
                 Rectangle {
-                    Layout.preferredWidth: 246
+                    Layout.preferredWidth: 244
                     Layout.fillHeight: true
-                    color: dialog.subtle
+                    color: dialog.sidebarSurface
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.space["2.5"]
-                        spacing: Theme.space["2.5"]
+                        anchors.leftMargin: Theme.space["3"]
+                        anchors.rightMargin: Theme.space["3"]
+                        anchors.topMargin: Theme.space["3"]
+                        anchors.bottomMargin: Theme.space["3"]
+                        spacing: Theme.space["2"]
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -364,7 +382,7 @@ Dialog {
                                 text: "环境"
                                 color: dialog.textMuted
                                 font.pixelSize: Theme.fontSize.caption
-                                font.weight: Font.Medium
+                                font.weight: Font.DemiBold
                                 Layout.fillWidth: true
                             }
                             UiIconButton {
@@ -373,7 +391,6 @@ Dialog {
                                 iconSize: 14
                                 iconName: "mdi6.plus"
                                 tooltip: "新建环境"
-                                accent: false
                                 onClicked: dialog.addEnvironment()
                             }
                         }
@@ -387,7 +404,7 @@ Dialog {
                             ColumnLayout {
                                 id: envList
                                 width: parent.width
-                                spacing: Theme.space["1"]
+                                spacing: Theme.space["1.5"]
 
                                 Repeater {
                                     model: dialog.draftEnvironments
@@ -398,27 +415,29 @@ Dialog {
                                         property bool active: index === dialog.selectedIndex
 
                                         Layout.fillWidth: true
-                                        Layout.preferredHeight: 48
-                                        radius: Theme.radii.lg
+                                        Layout.preferredHeight: 50
+                                        radius: Theme.radii.md
                                         color: active
-                                            ? (dialog.dark ? Theme.token("color-primary-soft", true) : "#EAF4FF")
-                                            : (envMouse.containsMouse ? (dialog.dark ? Qt.rgba(1, 1, 1, 0.045) : "#FFFFFF") : "transparent")
+                                            ? dialog.selectedFill
+                                            : (envMouse.containsMouse ? (dialog.dark ? Qt.rgba(1, 1, 1, 0.055) : Qt.rgba(255, 255, 255, 0.72)) : "transparent")
                                         border.width: active ? 1 : 0
-                                        border.color: active ? Qt.rgba(Theme.token("color-primary-active", dialog.dark).r, Theme.token("color-primary-active", dialog.dark).g, Theme.token("color-primary-active", dialog.dark).b, dialog.dark ? 0.30 : 0.18) : "transparent"
+                                        border.color: active ? Qt.rgba(Theme.token("color-primary-active", dialog.dark).r, Theme.token("color-primary-active", dialog.dark).g, Theme.token("color-primary-active", dialog.dark).b, dialog.dark ? 0.26 : 0.18) : "transparent"
+                                        antialiasing: true
 
                                         RowLayout {
                                             anchors.fill: parent
-                                            anchors.leftMargin: Theme.space["2"]
+                                            anchors.leftMargin: Theme.space["2.5"]
                                             anchors.rightMargin: Theme.space["2"]
                                             spacing: Theme.space["2"]
 
                                             Rectangle {
-                                                Layout.preferredWidth: 24
-                                                Layout.preferredHeight: 24
-                                                radius: 7
-                                                color: envItem.active ? Theme.token("color-primary-active", dialog.dark) : Theme.token("color-bg-surface", dialog.dark)
+                                                Layout.preferredWidth: 26
+                                                Layout.preferredHeight: 26
+                                                radius: 8
+                                                color: envItem.active ? Theme.token("color-primary-active", dialog.dark) : (dialog.dark ? Qt.rgba(1, 1, 1, 0.075) : "#FFFFFF")
                                                 border.width: envItem.active ? 0 : 1
-                                                border.color: dialog.borderColor
+                                                border.color: dialog.hairline
+                                                antialiasing: true
                                                 Label {
                                                     anchors.centerIn: parent
                                                     text: (modelData.name || "环").slice(0, 1)
@@ -434,7 +453,7 @@ Dialog {
                                                 Label {
                                                     Layout.fillWidth: true
                                                     text: modelData.name || "未命名环境"
-                                                    color: envItem.active ? Theme.token("color-primary-active", dialog.dark) : dialog.textMain
+                                                    color: dialog.textMain
                                                     font.pixelSize: Theme.fontSize.body
                                                     font.weight: envItem.active ? Font.DemiBold : Font.Normal
                                                     elide: Text.ElideRight
@@ -467,7 +486,7 @@ Dialog {
                     }
                 }
 
-                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: dialog.dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.07) }
+                Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: dialog.hairline }
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -476,11 +495,11 @@ Dialog {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 56
-                        color: dialog.surface
+                        Layout.preferredHeight: 60
+                        color: dialog.toolbarSurface
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: Theme.space["3"]
+                            anchors.leftMargin: Theme.space["4"]
                             anchors.rightMargin: Theme.space["3"]
                             spacing: Theme.space["2"]
 
@@ -491,7 +510,7 @@ Dialog {
                                     Layout.fillWidth: true
                                     text: dialog.currentEnvironment().name || "环境"
                                     color: dialog.textMain
-                                    font.pixelSize: Theme.fontSize.heading
+                                    font.pixelSize: 15
                                     font.weight: Font.DemiBold
                                     elide: Text.ElideRight
                                 }
@@ -510,7 +529,8 @@ Dialog {
                                 iconName: "mdi6.content-copy"
                                 iconSize: 14
                                 variant: "secondary"
-                                implicitWidth: 70
+                                controlRadius: 9
+                                implicitWidth: 72
                                 implicitHeight: 28
                                 onClicked: dialog.duplicateCurrentEnvironment()
                             }
@@ -522,36 +542,41 @@ Dialog {
                                 iconSize: 14
                                 variant: "secondary"
                                 danger: true
-                                implicitWidth: 58
+                                controlRadius: 9
+                                implicitWidth: 64
                                 implicitHeight: 28
                                 onClicked: dialog.deleteCurrentEnvironment()
                             }
                         }
                     }
 
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.subtle }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.hairline }
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Layout.margins: Theme.space["3"]
-                        spacing: Theme.space["3"]
+                        Layout.leftMargin: Theme.space["4"]
+                        Layout.rightMargin: Theme.space["4"]
+                        Layout.topMargin: Theme.space["3"]
+                        Layout.bottomMargin: Theme.space["3"]
+                        spacing: Theme.space["2.5"]
 
                         GridLayout {
                             Layout.fillWidth: true
                             columns: 2
                             columnSpacing: Theme.space["3"]
-                            rowSpacing: Theme.space["2"]
+                            rowSpacing: Theme.space["1.5"]
 
                             Label {
                                 text: "名称"
                                 color: dialog.textMuted
                                 font.pixelSize: Theme.fontSize.caption
+                                Layout.alignment: Qt.AlignVCenter
                             }
                             UiTextField {
                                 id: envNameInput
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 30
+                                Layout.preferredHeight: 28
                                 dark: dialog.dark
                                 text: dialog.currentEnvironment().name || ""
                                 placeholderText: "未命名环境"
@@ -572,11 +597,12 @@ Dialog {
                                 text: "Base URL"
                                 color: dialog.textMuted
                                 font.pixelSize: Theme.fontSize.caption
+                                Layout.alignment: Qt.AlignVCenter
                             }
                             UiTextField {
                                 id: envBaseUrlInput
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 30
+                                Layout.preferredHeight: 28
                                 dark: dialog.dark
                                 text: dialog.currentEnvironment().baseUrl || ""
                                 placeholderText: "http://127.0.0.1:8000"
@@ -597,47 +623,27 @@ Dialog {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 1
-                            color: dialog.subtle
+                            color: dialog.hairline
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: Theme.space["1"]
+                            spacing: Theme.space["2"]
 
-                            Repeater {
-                                model: dialog.detailTabs
-                                delegate: Rectangle {
-                                    id: sectionTab
-                                    required property int index
-                                    required property var modelData
-                                    property bool active: index === dialog.detailTab
-
-                                    Layout.preferredWidth: Math.max(86, sectionTabLabel.implicitWidth + Theme.space["4"])
-                                    Layout.preferredHeight: 28
-                                    radius: Theme.radii.md
-                                    color: active
-                                        ? (dialog.dark ? Theme.token("color-primary-soft", true) : Theme.token("color-primary-bg", false))
-                                        : (sectionTabMouse.containsMouse ? dialog.subtle : "transparent")
-                                    border.width: active ? 1 : 0
-                                    border.color: active ? Qt.rgba(Theme.token("color-primary-active", dialog.dark).r, Theme.token("color-primary-active", dialog.dark).g, Theme.token("color-primary-active", dialog.dark).b, dialog.dark ? 0.28 : 0.18) : "transparent"
-
-                                    Label {
-                                        id: sectionTabLabel
-                                        anchors.centerIn: parent
-                                        text: modelData.title + " " + (dialog.currentEnvironment()[modelData.kind] || []).length
-                                        color: sectionTab.active ? Theme.token("color-primary-active", dialog.dark) : dialog.textMain
-                                        font.pixelSize: Theme.fontSize.caption
-                                        font.weight: sectionTab.active ? Font.DemiBold : Font.Normal
-                                    }
-
-                                    MouseArea {
-                                        id: sectionTabMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: dialog.detailTab = index
-                                    }
-                                }
+                            UiSegmentedTabs {
+                                Layout.preferredWidth: Math.min(260, contentPreferredWidth)
+                                Layout.preferredHeight: 32
+                                dark: dialog.dark
+                                tabs: dialog.detailTabs
+                                counts: dialog.detailCounts()
+                                currentIndex: dialog.detailTab
+                                controlHeight: 28
+                                minItemWidth: 92
+                                showIcons: false
+                                showZeroCount: true
+                                textColor: dialog.textMain
+                                mutedColor: dialog.textSubtle
+                                onActivated: function(index) { dialog.detailTab = index }
                             }
 
                             Item { Layout.fillWidth: true }
@@ -648,7 +654,8 @@ Dialog {
                                 iconName: "mdi6.plus"
                                 iconSize: 14
                                 variant: "secondary"
-                                implicitWidth: 104
+                                controlRadius: 9
+                                implicitWidth: 108
                                 implicitHeight: 28
                                 onClicked: dialog.addRow((dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).kind)
                             }
@@ -657,11 +664,12 @@ Dialog {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: Theme.radii.lg
-                            color: dialog.dark ? Theme.token("color-bg-subtle-2", true) : "#FAFBFC"
+                            radius: Theme.radii.xl
+                            color: dialog.dark ? Qt.rgba(1, 1, 1, 0.035) : "#FBFCFD"
                             border.width: 1
-                            border.color: dialog.dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.065)
+                            border.color: dialog.hairline
                             clip: true
+                            antialiasing: true
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -669,8 +677,8 @@ Dialog {
 
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 30
-                                    color: dialog.dark ? Theme.token("color-bg-subtle", true) : "#F6F7F9"
+                                    Layout.preferredHeight: 29
+                                    color: dialog.dark ? Qt.rgba(1, 1, 1, 0.045) : "#F6F7F9"
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -678,9 +686,9 @@ Dialog {
                                         anchors.rightMargin: Theme.space["2"]
                                         spacing: Theme.space["2"]
 
-                                        Label { text: "启用"; Layout.preferredWidth: 38; color: dialog.textMuted; font.pixelSize: Theme.fontSize.caption }
-                                        Label { text: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).keyTitle; Layout.preferredWidth: 190; color: dialog.textMuted; font.pixelSize: Theme.fontSize.caption }
-                                        Label { text: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).valueTitle; Layout.fillWidth: true; color: dialog.textMuted; font.pixelSize: Theme.fontSize.caption }
+                                        Label { text: "启用"; Layout.preferredWidth: 38; color: dialog.textSubtle; font.pixelSize: Theme.fontSize.caption; font.weight: Font.Medium }
+                                        Label { text: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).keyTitle; Layout.preferredWidth: 190; color: dialog.textSubtle; font.pixelSize: Theme.fontSize.caption; font.weight: Font.Medium }
+                                        Label { text: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).valueTitle; Layout.fillWidth: true; color: dialog.textSubtle; font.pixelSize: Theme.fontSize.caption; font.weight: Font.Medium }
                                         Label { text: ""; Layout.preferredWidth: 38 }
                                     }
                                 }
@@ -704,8 +712,8 @@ Dialog {
                                                 property string kind: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).kind
 
                                                 Layout.fillWidth: true
-                                                Layout.preferredHeight: 36
-                                                color: rowMouse.containsMouse ? (dialog.dark ? Qt.rgba(1, 1, 1, 0.04) : "#FFFFFF") : "transparent"
+                                                Layout.preferredHeight: 34
+                                                color: rowMouse.containsMouse ? (dialog.dark ? Qt.rgba(1, 1, 1, 0.045) : "#FFFFFF") : "transparent"
 
                                                 RowLayout {
                                                     anchors.fill: parent
@@ -717,7 +725,7 @@ Dialog {
                                                         dark: dialog.dark
                                                         checked: modelData.enabled !== false
                                                         Layout.preferredWidth: 40
-                                                        Layout.preferredHeight: 30
+                                                        Layout.preferredHeight: 28
                                                         onToggled: dialog.updateRow(kind, index, "enabled", checked)
                                                     }
 
@@ -725,7 +733,7 @@ Dialog {
                                                         id: keyInput
                                                         dark: dialog.dark
                                                         Layout.preferredWidth: 190
-                                                        Layout.preferredHeight: 30
+                                                        Layout.preferredHeight: 28
                                                         text: modelData.key || ""
                                                         color: dialog.textMain
                                                         placeholderText: kind === "headers" ? "Authorization" : "token"
@@ -733,10 +741,11 @@ Dialog {
                                                         font.family: Theme.fontFamily.mono
                                                         font.pixelSize: Theme.fontSize.mono
                                                         background: Rectangle {
-                                                            radius: Theme.radii.xs
+                                                            radius: Theme.radii.sm
                                                             color: keyInput.activeFocus ? dialog.surface : "transparent"
                                                             border.width: keyInput.activeFocus ? 1 : 0
                                                             border.color: Theme.token("color-primary-active", dialog.dark)
+                                                            antialiasing: true
                                                         }
                                                         onEditingFinished: dialog.updateRow(kind, index, "key", text.trim())
                                                         onActiveFocusChanged: {
@@ -751,7 +760,7 @@ Dialog {
                                                         id: valueInput
                                                         dark: dialog.dark
                                                         Layout.fillWidth: true
-                                                        Layout.preferredHeight: 30
+                                                        Layout.preferredHeight: 28
                                                         text: modelData.value || ""
                                                         color: dialog.textMain
                                                         placeholderText: kind === "headers" ? "Bearer {{token}}" : "value"
@@ -759,10 +768,11 @@ Dialog {
                                                         font.family: Theme.fontFamily.mono
                                                         font.pixelSize: Theme.fontSize.mono
                                                         background: Rectangle {
-                                                            radius: Theme.radii.xs
+                                                            radius: Theme.radii.sm
                                                             color: valueInput.activeFocus ? dialog.surface : "transparent"
                                                             border.width: valueInput.activeFocus ? 1 : 0
                                                             border.color: Theme.token("color-primary-active", dialog.dark)
+                                                            antialiasing: true
                                                         }
                                                         onEditingFinished: dialog.updateRow(kind, index, "value", text)
                                                         onActiveFocusChanged: {
@@ -776,7 +786,7 @@ Dialog {
                                                     ApiDeleteButton {
                                                         dark: dialog.dark
                                                         Layout.preferredWidth: 38
-                                                        Layout.preferredHeight: 30
+                                                        Layout.preferredHeight: 28
                                                         iconColor: dialog.textMuted
                                                         dangerColor: Theme.token("color-danger", dialog.dark)
                                                         onDeleteRequested: dialog.deleteRow(kind, index)
@@ -795,7 +805,7 @@ Dialog {
                                                     anchors.right: parent.right
                                                     anchors.bottom: parent.bottom
                                                     height: 1
-                                                    color: dialog.dark ? Qt.rgba(1, 1, 1, 0.045) : Qt.rgba(0, 0, 0, 0.045)
+                                                    color: dialog.dark ? Qt.rgba(1, 1, 1, 0.045) : Qt.rgba(60, 60, 67, 0.065)
                                                 }
                                             }
                                         }
@@ -803,12 +813,12 @@ Dialog {
                                         Rectangle {
                                             visible: dialog.currentRows().length === 0
                                             Layout.fillWidth: true
-                                            Layout.preferredHeight: 88
+                                            Layout.preferredHeight: 140
                                             color: "transparent"
                                             UiEmptyState {
                                                 anchors.centerIn: parent
                                                 dark: dialog.dark
-                                                iconName: "mdi6.variable"
+                                                iconName: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).icon
                                                 title: (dialog.detailTabs[dialog.detailTab] || dialog.detailTabs[0]).emptyText
                                             }
                                         }
@@ -818,19 +828,20 @@ Dialog {
                         }
                     }
 
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.subtle }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: dialog.hairline }
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 48
-                        Layout.leftMargin: Theme.space["3"]
-                        Layout.rightMargin: Theme.space["3"]
+                        Layout.preferredHeight: 52
+                        Layout.leftMargin: Theme.space["4"]
+                        Layout.rightMargin: Theme.space["4"]
                         spacing: Theme.space["2"]
 
                         UiButton {
                             text: "取消"
                             dark: dialog.dark
                             variant: "ghost"
+                            controlRadius: 9
                             implicitWidth: 72
                             implicitHeight: 30
                             onClicked: dialog.close()
@@ -842,6 +853,7 @@ Dialog {
                             text: "保存并关闭"
                             dark: dialog.dark
                             variant: "secondary"
+                            controlRadius: 9
                             implicitWidth: 104
                             implicitHeight: 30
                             onClicked: dialog.save(true)
@@ -851,6 +863,7 @@ Dialog {
                             text: "保存"
                             dark: dialog.dark
                             variant: "primary"
+                            controlRadius: 9
                             implicitWidth: 80
                             implicitHeight: 30
                             onClicked: dialog.save(false)

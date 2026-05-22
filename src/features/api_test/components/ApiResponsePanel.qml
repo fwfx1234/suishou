@@ -203,71 +203,23 @@ ColumnLayout {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                Layout.preferredHeight: 36
                 color: root.panelBg
                 visible: root.responseHasContent()
 
-                Flickable {
+                UiSegmentedTabs {
                     anchors.fill: parent
                     anchors.leftMargin: Theme.space["2"]
                     anchors.rightMargin: Theme.space["2"]
-                    clip: true
-                    interactive: contentWidth > width
-                    boundsBehavior: Flickable.StopAtBounds
-                    contentWidth: responseTabRow.implicitWidth
-                    contentHeight: height
-
-                    Row {
-                        id: responseTabRow
-                        height: parent.height
-                        spacing: Theme.space["1"]
-
-                        Repeater {
-                            model: root.detailTabs
-                            delegate: Rectangle {
-                                id: responseTabItem
-                                required property int index
-                                required property var modelData
-                                property bool active: index === root.detailTab
-                                width: Math.max(70, responseTabContent.implicitWidth + Theme.space["3"])
-                                height: 26
-                                anchors.verticalCenter: parent.verticalCenter
-                                radius: Theme.radii.xs
-                                color: active
-                                    ? Theme.token("color-bg-subtle", root.dark)
-                                    : (responseTabMouse.containsMouse ? Theme.token("color-bg-subtle-2", root.dark) : "transparent")
-                                Row {
-                                    id: responseTabContent
-                                    anchors.centerIn: parent
-                                    spacing: 5
-                                    Image {
-                                        width: 13
-                                        height: 13
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        source: "image://qta/" + modelData.icon + ";color=" + ("" + (responseTabItem.active ? Theme.token("color-primary-active", root.dark) : root.textMain)).replace("#", "") + ";size=13"
-                                        sourceSize.width: 13
-                                        sourceSize.height: 13
-                                        fillMode: Image.PreserveAspectFit
-                                    }
-                                    Label {
-                                        text: modelData.title
-                                        color: responseTabItem.active
-                                            ? Theme.token("color-primary-active", root.dark)
-                                            : root.textMain
-                                        font.pixelSize: Theme.fontSize.caption
-                                        font.bold: responseTabItem.active
-                                    }
-                                }
-                                MouseArea {
-                                    id: responseTabMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.detailTab = index
-                                }
-                            }
-                        }
-                    }
+                    dark: root.dark
+                    tabs: root.detailTabs
+                    currentIndex: root.detailTab
+                    controlHeight: 28
+                    minItemWidth: 66
+                    itemPaddingX: Theme.space["2"]
+                    textColor: root.textMain
+                    mutedColor: root.textSubtle
+                    onActivated: function(index) { root.detailTab = index }
                 }
             }
 
