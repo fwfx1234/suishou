@@ -1,6 +1,7 @@
 name: Build Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -17,10 +18,10 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-14
+            os: [self-hosted, macOS]
             artifact: release-macos
           - name: Windows
-            os: windows-2022
+            os: [self-hosted, Windows]
             artifact: release-windows
 
     steps:
@@ -74,7 +75,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux]
     needs: build
 
     steps:
