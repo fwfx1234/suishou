@@ -224,12 +224,8 @@ class ClipboardHistoryModel(QAbstractListModel):
         return True
 
     def _insertion_index(self, item: dict) -> int:
-        if item.get("pinned"):
-            return 0
-        for i, existing in enumerate(self._items):
-            if not existing.get("pinned"):
-                return i
-        return len(self._items)
+        del item
+        return 0
 
     def _fetch_latest_db_id(self) -> int:
         latest = self._service.latest_item()
@@ -247,6 +243,7 @@ class ClipboardWindowViewModel(QObject):
     historyModelChanged = Signal()
     configChanged = Signal("QVariantMap")
     messageChanged = Signal(str)
+    openStateChanged = Signal("QVariantMap")
 
     def __init__(
         self,
@@ -276,6 +273,13 @@ class ClipboardWindowViewModel(QObject):
     def initialQuery(self) -> str:
         return self._query
 
+    @Slot(result=str)
+    def latestItemId(self) -> str:
+        latest = self._service.latest_item()
+        if latest is None:
+            return ""
+        return str(latest.get("id") or "")
+
     @Slot(str)
     def refreshHistory(self, query: str = "") -> None:
         self._query = query
@@ -290,6 +294,33 @@ class ClipboardWindowViewModel(QObject):
             return
         self._filter_type = value
         self._history_model.reset(self._query, self._filter_type)
+
+    @Slot()
+    def resetToLatest(self) -> None:
+        self._query = ""
+        self._initial_panel = "history"
+        self._filter_type = "all"
+        self._history_model.reset("", "all")
+        self.openStateChanged.emit(
+            {
+                "panel": "history",
+                "query": "",
+                "filter": "all",
+                "latestItemId": self.latestItemId(),
+            }
+        )
+
+    @Slot()
+    def showSettingsPanel(self) -> None:
+        self._initial_panel = "settings"
+        self.openStateChanged.emit(
+            {
+                "panel": "settings",
+                "query": "",
+                "filter": "all",
+                "latestItemId": self.latestItemId(),
+            }
+        )
 
     @Slot()
     def loadConfig(self) -> None:

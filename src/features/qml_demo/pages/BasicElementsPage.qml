@@ -7,6 +7,7 @@ import "../../../app/theme"
 Flickable {
     anchors.fill: parent; clip: true; contentHeight: col.implicitHeight + 32
     property bool dark: false; property color primary: "#8B5CF6"
+    property string primaryColorHex: String(primary).replace("#", "")
 
     ColumnLayout {
         id: col; width: parent.width - 24; x: 12; y: 12; spacing: 20
@@ -55,7 +56,7 @@ Flickable {
             RowLayout { spacing: 16
                 Repeater {
                     model: ["mdi6.emoticon-happy-outline", "mdi6.star", "mdi6.heart", "mdi6.thumb-up-outline"]
-                    delegate: Image { width: 40; height: 40; fillMode: Image.PreserveAspectFit; source: "image://qta/" + modelData + ";color=" + primary.replace("#", "") + ";size=40" }
+                    delegate: Image { width: 40; height: 40; fillMode: Image.PreserveAspectFit; source: "image://qta/" + modelData + ";color=" + primaryColorHex + ";size=40" }
                 }
             }
             Label { text: "本项目用 image://qta/ 协议加载 qtawesome 图标。"; font.pixelSize: 12; color: Theme.token("color-text-secondary", dark) }

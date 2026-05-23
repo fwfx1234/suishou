@@ -65,10 +65,11 @@ class ClipboardRuntime:
         from .view_model import ClipboardWindowViewModel
 
         initial_panel = str(action.payload.get("panel") or "history")
+        initial_query = ""
         view_model = ClipboardWindowViewModel(
             service,
             initial_panel=initial_panel,
-            initial_query=action.input_text,
+            initial_query=initial_query,
         )
         return ClipboardInlineSession(
             manifest=action.manifest,
@@ -118,8 +119,13 @@ class ClipboardInlineSession:
         return []
 
     def reactivate(self, action) -> None:
-        if action.input_text:
-            self.on_input_changed(action.input_text)
+        panel = str(action.payload.get("panel") or "history")
+        if self._clipboard_view_model is None:
+            return
+        if panel == "settings":
+            self._clipboard_view_model.showSettingsPanel()
+            return
+        self._clipboard_view_model.resetToLatest()
 
     def close(self) -> None:
         if self._clipboard_view_model is not None:

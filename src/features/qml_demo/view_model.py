@@ -108,7 +108,4 @@ class QmlDemoViewModel(QObject):
         else: return "晚上好！"
 
     def dispose(self) -> None:
-        for sig in [self.countChanged, self.colorChanged, self.formDataChanged,
-                     self.listDataChanged, self.messageReceived]:
-            try: sig.disconnect()
-            except RuntimeError: pass
+        return None

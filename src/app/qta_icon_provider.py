@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import OrderedDict
 
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QColor, QPixmap
@@ -36,9 +37,20 @@ class QtAwesomeImageProvider(QQuickImageProvider):
 
     def __init__(self) -> None:
         super().__init__(QQuickImageProvider.ImageType.Pixmap)
+        self._cache: OrderedDict[tuple[str, str, int], QPixmap] = OrderedDict()
+        self._cache_limit = 256
 
     def requestPixmap(self, icon_id: str, size: QSize, requestedSize: QSize) -> QPixmap:
         spec = self._parse(icon_id, requestedSize)
+        key = (spec.name, spec.color.name(QColor.NameFormat.HexArgb), spec.size)
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._cache.move_to_end(key)
+            if size is not None:
+                size.setWidth(cached.width())
+                size.setHeight(cached.height())
+            return QPixmap(cached)
+
         qta = _load_qtawesome()
         if qta is None:
             return QPixmap(spec.size, spec.size)
@@ -50,6 +62,10 @@ class QtAwesomeImageProvider(QQuickImageProvider):
             # Never crash QML image loading for invalid icon ids.
             pixmap = QPixmap(spec.size, spec.size)
             pixmap.fill(QColor(0, 0, 0, 0))
+        self._cache[key] = QPixmap(pixmap)
+        self._cache.move_to_end(key)
+        while len(self._cache) > self._cache_limit:
+            self._cache.popitem(last=False)
         if size is not None:
             size.setWidth(pixmap.width())
             size.setHeight(pixmap.height())

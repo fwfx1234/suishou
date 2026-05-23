@@ -14,7 +14,6 @@ from PySide6.QtWidgets import QApplication
 
 from .app_runtime import ApplicationRuntime
 from .logging import get_logger, init_logging, install_qt_message_handler
-from .plugins.manifest_loader import detect_required_capabilities
 from .version import get_app_version
 
 
@@ -86,16 +85,6 @@ def main() -> int:
     QQuickStyle.setStyle("Basic")
     style_elapsed_ms = int((perf_counter() - style_started_at) * 1000)
     qt_app_started_at = perf_counter()
-    capabilities_started_at = perf_counter()
-    required_capabilities = detect_required_capabilities()
-    webengine_required = "webengine" in required_capabilities
-    capabilities_elapsed_ms = int((perf_counter() - capabilities_started_at) * 1000)
-    webengine_elapsed_ms = 0
-    if webengine_required:
-        webengine_started_at = perf_counter()
-        from PySide6.QtWebEngineQuick import QtWebEngineQuick
-        QtWebEngineQuick.initialize()
-        webengine_elapsed_ms = int((perf_counter() - webengine_started_at) * 1000)
     qt_app = QApplication(sys.argv)
     qt_app_elapsed_ms = int((perf_counter() - qt_app_started_at) * 1000)
     fonts_started_at = perf_counter()
@@ -115,9 +104,6 @@ def main() -> int:
         styleElapsedMs=style_elapsed_ms,
         qtAppElapsedMs=qt_app_elapsed_ms,
         fontsElapsedMs=fonts_elapsed_ms,
-        capabilitiesElapsedMs=capabilities_elapsed_ms,
-        webengineRequired=webengine_required,
-        webengineInitElapsedMs=webengine_elapsed_ms,
         elapsedMs=int((perf_counter() - app_started_at) * 1000),
     )
     return ApplicationRuntime(qt_app, log).run()

@@ -333,10 +333,11 @@ class PluginSurfaceCoordinator:
         if not wc["fullscreen"]:
             _center_window_once(win, target_screen, wc["width"], wc["height"])
 
-        def _on_retained_close(pid: str) -> None:
+        def _on_retained_close(pid: str, retained_window=win) -> None:
             surface = self._windows.get(pid)
-            if surface is not None:
+            if surface is not None and surface.window is retained_window:
                 surface.hidden_for_retention = True
+            self._release_window_surface(pid, retained_window)
             if self._on_retained_close is not None:
                 self._on_retained_close(pid, "window")
 
@@ -401,6 +402,20 @@ class PluginSurfaceCoordinator:
         surface = self._windows.get(plugin_id)
         if surface is not None and surface.window is window:
             self._windows.pop(plugin_id, None)
+
+    def _release_window_surface(self, plugin_id: str, window: object) -> None:
+        surface = self._windows.get(plugin_id)
+        if surface is not None and surface.window is window:
+            self._windows.pop(plugin_id, None)
+        if not _is_qobject_alive(window):
+            return
+        try:
+            window.setProperty("retainOnClose", False)
+            window.setProperty("pluginId", "")
+            window.setProperty("qmlPage", "")
+            window.deleteLater()
+        except RuntimeError:
+            return
 
     def _adopt_existing_window_surface(self, plugin_id: str) -> PluginWindowSurface | None:
         windows_fn = getattr(self._qt_app, "topLevelWindows", None)

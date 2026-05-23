@@ -8,6 +8,10 @@
   "qmlPage": "JsonParserPage.qml",
   "contextProperty": "jsonParserVm",
   "category": "tool",
+  "window": {
+    "width": 0.82,
+    "height": 0.84
+  },
   "order": 1,
   "commands": [
     {

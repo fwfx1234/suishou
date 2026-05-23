@@ -18,9 +18,11 @@ Item {
     property string activeFilter: "all"
     property var hostWindow: root.Window.window
     property string statusText: ""
+    property bool suppressSearchRefresh: false
     property bool captureTextEnabled: true
     property bool captureImageEnabled: true
     property bool captureFilesEnabled: true
+    property bool forceLatestSelection: false
     readonly property int historyRowHeight: 82
     readonly property int historyCount: historyModel ? historyModel.count : 0
     readonly property bool dark: typeof app !== "undefined" && app ? app.theme === "dark" : false
@@ -65,7 +67,14 @@ Item {
 
     function refreshSelection() {
         if (historyCount === 0) {
+            forceLatestSelection = false
             selectItem({}, -1)
+            return
+        }
+        if (forceLatestSelection) {
+            forceLatestSelection = false
+            selectItem(itemAtIndex(0), 0)
+            historyList.positionViewAtIndex(0, ListView.Beginning)
             return
         }
         var retainedIndex = indexOfItemId(selectedItemId)
@@ -123,6 +132,41 @@ Item {
         activeFilter = filterType || "all"
         clipboardVm.setFilterType(activeFilter)
         Qt.callLater(root.focusForKeyboard)
+    }
+
+    function showLatestHistory() {
+        applyOpenState({
+            "panel": "history",
+            "query": "",
+            "filter": "all",
+            "latestItemId": clipboardVm.latestItemId()
+        })
+        clipboardVm.resetToLatest()
+    }
+
+    function setSearchQuery(text) {
+        suppressSearchRefresh = true
+        searchInput.text = text || ""
+        suppressSearchRefresh = false
+    }
+
+    function applyOpenState(state) {
+        state = state || ({})
+        if (String(state.panel || "history") === "settings") {
+            activeFilter = "all"
+            setSearchQuery("")
+            tabs.currentIndex = 1
+            return
+        }
+        activeFilter = "all"
+        selectedItem = ({})
+        selectedIndex = -1
+        selectedItemId = String(state.latestItemId || "")
+        forceLatestSelection = selectedItemId.length === 0
+        setSearchQuery(String(state.query || ""))
+        tabs.currentIndex = 0
+        historyList.contentY = 0
+        Qt.callLater(root.refreshSelection)
     }
 
     function maybeLoadMore() {
@@ -232,14 +276,21 @@ Item {
     Component.onCompleted: {
         var initialQuery = clipboardVm.initialQuery()
         searchInput.text = initialQuery
-        clipboardVm.refreshHistory(initialQuery)
         clipboardVm.loadConfig()
-        tabs.currentIndex = clipboardVm.initialPanel() === "settings" ? 1 : 0
+        if (clipboardVm.initialPanel() === "settings") {
+            clipboardVm.refreshHistory(initialQuery)
+            tabs.currentIndex = 1
+        } else {
+            root.showLatestHistory()
+        }
         Qt.callLater(root.focusForKeyboard)
     }
 
     onVisibleChanged: {
         if (visible) {
+            if (clipboardVm.initialPanel() !== "settings") {
+                root.showLatestHistory()
+            }
             Qt.callLater(root.focusForKeyboard)
         }
     }
@@ -440,7 +491,10 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 34
                             placeholderText: "搜索历史、链接、文件名"
-                            onTextChanged: clipboardVm.refreshHistory(text)
+                            onTextChanged: {
+                                if (!root.suppressSearchRefresh)
+                                    clipboardVm.refreshHistory(text)
+                            }
 
                             Keys.priority: Keys.BeforeItem
                             Keys.onUpPressed: function(event) {
@@ -1153,7 +1207,6 @@ Item {
         color: fieldBg
         border.width: 1
         border.color: input.activeFocus ? selectedStrongBg : hairlineColor
-        focus: input.activeFocus
         Keys.forwardTo: [input]
 
         TextInput {
@@ -1206,7 +1259,6 @@ Item {
         border.width: 1
         border.color: edit.activeFocus ? selectedStrongBg : hairlineColor
         clip: true
-        focus: edit.activeFocus
         Keys.forwardTo: [edit]
 
         TextEdit {
@@ -1424,6 +1476,10 @@ Item {
             if (message === "已写回系统剪切板") {
                 root.closeCurrentSurface()
             }
+        }
+
+        function onOpenStateChanged(state) {
+            root.applyOpenState(state)
         }
     }
 

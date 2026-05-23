@@ -123,7 +123,7 @@ class WinHotkeyManager(QObject):
         else:
             unregister_elapsed_ms = 0
         modifiers, virtual_key = parsed
-        hwnd = 0
+        hwnd = self._hwnd or 0
         ctypes.set_last_error(0)
         native_started_at = time.perf_counter()
         result = user32.RegisterHotKey(

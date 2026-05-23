@@ -48,7 +48,6 @@ Item {
         anchors.margins: Theme.space["3"]
         spacing: Theme.space["2"]
 
-        // 顶部标题 + 工具栏
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.space["2"]
@@ -60,15 +59,33 @@ Item {
                 font.family: Theme.fontFamily.ui
             }
             Item { Layout.fillWidth: true }
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            Layout.preferredHeight: implicitHeight
+            spacing: Theme.space["2"]
+
             UiButton { text: "格式化"; dark: root.dark; variant: lastMode === "format" ? "primary" : "secondary"; onClicked: runMode("format") }
             UiButton { text: "压缩"; dark: root.dark; variant: lastMode === "compress" ? "primary" : "secondary"; onClicked: runMode("compress") }
             UiButton { text: "执行查询"; dark: root.dark; variant: lastMode === "query" ? "primary" : "secondary"; onClicked: runMode("query") }
             UiButton { text: "复制输出"; dark: root.dark; variant: "ghost"; onClicked: jsonParserVm.copyText(output.text) }
             UiButton { text: "从剪贴板填充"; dark: root.dark; variant: "ghost"; onClicked: jsonParserVm.fillFromClipboard() }
-            UiButton { text: "清空"; dark: root.dark; variant: "ghost"; onClicked: { input.text = ""; query.text = ""; output.text = ""; errorLocText = ""; statsText = ""; setStatus("就绪", "info") } }
+            UiButton {
+                text: "清空"
+                dark: root.dark
+                variant: "ghost"
+                onClicked: {
+                    input.text = ""
+                    query.text = ""
+                    output.text = ""
+                    errorLocText = ""
+                    statsText = ""
+                    setStatus("就绪", "info")
+                }
+            }
         }
 
-        // 查询表达式
         RowLayout {
             Layout.fillWidth: true
             Label { text: "JSONPath"; color: textMuted; font.pixelSize: Theme.fontSize.caption }
@@ -81,7 +98,6 @@ Item {
             }
         }
 
-        // SplitView 输入 / 输出
         SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -93,9 +109,11 @@ Item {
 
             ColumnLayout {
                 SplitView.preferredWidth: parent.width * 0.5
-                SplitView.minimumWidth: 200
+                SplitView.minimumWidth: 240
                 spacing: Theme.space["1"]
+
                 Label { text: "输入"; color: textSubtle; font.pixelSize: Theme.fontSize.caption }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -103,33 +121,27 @@ Item {
                     radius: Theme.radii.md
                     border.color: panelBorder
                     border.width: 1
-                    UiScrollView {
-                        id: inputScroll
+
+                    JsonEditorPane {
+                        id: input
                         anchors.fill: parent
-                        clip: true
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        ScrollBar.horizontal.policy: ScrollBar.AsNeeded
-                        UiTextArea {
-                            id: input
-                            dark: root.dark
-                            width: Math.max(inputScroll.availableWidth, contentWidth + leftPadding + rightPadding)
-                            height: Math.max(inputScroll.availableHeight, contentHeight + topPadding + bottomPadding)
-                            placeholderText: "粘贴或输入 JSON..."
-                            wrapMode: TextEdit.NoWrap
-                            font.family: Theme.fontFamily.mono
-                            font.pixelSize: Theme.fontSize.mono
-                        }
+                        backgroundColor: panelBg
+                        placeholderText: "粘贴或输入 JSON..."
                     }
                 }
             }
 
             ColumnLayout {
+                SplitView.preferredWidth: parent.width * 0.5
+                SplitView.minimumWidth: 240
                 spacing: Theme.space["1"]
+
                 Label {
                     text: lastMode === "compress" ? "输出 (压缩)" : lastMode === "query" ? "输出 (查询结果)" : "输出 (格式化)"
                     color: textSubtle
                     font.pixelSize: Theme.fontSize.caption
                 }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -137,38 +149,29 @@ Item {
                     radius: Theme.radii.md
                     border.color: panelBorder
                     border.width: 1
-                    UiScrollView {
-                        id: outputScroll
+
+                    JsonEditorPane {
+                        id: output
                         anchors.fill: parent
-                        clip: true
-                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        ScrollBar.horizontal.policy: ScrollBar.AsNeeded
-                        UiTextArea {
-                            id: output
-                            dark: root.dark
-                            width: Math.max(outputScroll.availableWidth, contentWidth + leftPadding + rightPadding)
-                            height: Math.max(outputScroll.availableHeight, contentHeight + topPadding + bottomPadding)
-                            readOnly: true
-                            wrapMode: TextEdit.NoWrap
-                            font.family: Theme.fontFamily.mono
-                            font.pixelSize: Theme.fontSize.mono
-                        }
+                        backgroundColor: subtleBg
+                        readOnly: true
                     }
                 }
             }
         }
 
-        // 状态栏
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.space["3"] * 2 + Theme.space["1"]
             color: statusBg
             radius: Theme.radii.sm
+
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: Theme.space["2"]
                 anchors.rightMargin: Theme.space["2"]
                 spacing: Theme.space["2"]
+
                 Label {
                     text: statusText
                     color: statusColor
@@ -176,6 +179,7 @@ Item {
                     elide: Text.ElideMiddle
                     Layout.fillWidth: true
                 }
+
                 Label {
                     text: errorLocText
                     color: dangerColor
@@ -183,6 +187,7 @@ Item {
                     font.pixelSize: Theme.fontSize.caption
                     font.family: Theme.fontFamily.mono
                 }
+
                 Label {
                     text: statsText
                     color: textSubtle
@@ -190,6 +195,64 @@ Item {
                     font.family: Theme.fontFamily.mono
                 }
             }
+        }
+    }
+
+    component JsonEditorPane: Rectangle {
+        id: pane
+
+        property alias text: editor.text
+        property string placeholderText: ""
+        property bool readOnly: false
+        property color backgroundColor: panelBg
+
+        color: backgroundColor
+        clip: true
+
+        Flickable {
+            id: flick
+            anchors.fill: parent
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            contentWidth: Math.max(width, editor.paintedWidth + editor.leftPadding + editor.rightPadding)
+            contentHeight: Math.max(height, editor.paintedHeight + editor.topPadding + editor.bottomPadding)
+
+            TextEdit {
+                id: editor
+                width: Math.max(flick.width, paintedWidth + leftPadding + rightPadding)
+                height: Math.max(flick.height, paintedHeight + topPadding + bottomPadding)
+                leftPadding: Theme.space["2"]
+                rightPadding: Theme.space["2"]
+                topPadding: Theme.space["2"]
+                bottomPadding: Theme.space["2"]
+                wrapMode: TextEdit.NoWrap
+                readOnly: pane.readOnly
+                selectByMouse: true
+                persistentSelection: true
+                textFormat: TextEdit.PlainText
+                color: textMain
+                font.family: Theme.fontFamily.mono
+                font.pixelSize: Theme.fontSize.mono
+            }
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+
+            ScrollBar.horizontal: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+        }
+
+        Label {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.margins: Theme.space["2"]
+            visible: !pane.readOnly && editor.text.length === 0
+            text: pane.placeholderText
+            color: textSubtle
+            font.family: Theme.fontFamily.mono
+            font.pixelSize: Theme.fontSize.mono
         }
     }
 

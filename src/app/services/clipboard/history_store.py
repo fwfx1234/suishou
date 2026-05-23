@@ -224,7 +224,7 @@ class ClipboardHistoryStore:
                     SELECT id, item_type, content, preview, metadata, pinned, created_at
                     FROM clipboard_history
                     {where_sql}
-                    ORDER BY pinned DESC, id DESC
+                    ORDER BY id DESC
                     {limit_sql}
                     """,
                     tuple(params),

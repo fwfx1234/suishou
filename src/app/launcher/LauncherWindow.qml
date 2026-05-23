@@ -124,6 +124,8 @@ Window {
             anchors.fill: parent
             visible: false
             focus: visible
+            onVisibleChanged: retainedLoader.active = visible && pageUrl.length > 0
+            onPageUrlChanged: retainedLoader.active = visible && pageUrl.length > 0
             Keys.priority: Keys.AfterItem
             Keys.onEscapePressed: function (event) {
                 launcher.exitMixedMode(true);
@@ -133,7 +135,7 @@ Window {
             Loader {
                 id: retainedLoader
                 anchors.fill: parent
-                active: true
+                active: visible && pageUrl.length > 0
                 visible: active
                 clip: true
                 asynchronous: true

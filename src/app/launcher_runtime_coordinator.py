@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import os
 from time import perf_counter
 
 from PySide6.QtCore import QTimer
@@ -16,6 +17,8 @@ from app.plugins.launch_request import PluginLaunchRequest
 from app.plugins.manifest import PluginManifest
 from app.plugins.runtime import PluginContext
 from app.plugins.session_manager import PluginSessionManager, SessionState
+from app.services.clipboard import DEFAULT_CLIPBOARD_CONFIG
+from app.storage import StorageManager
 
 
 def _center_window_once(win: object, screen: object, width: int, height: int) -> None:
@@ -108,9 +111,9 @@ class LauncherRuntimeCoordinator:
         )
         QTimer.singleShot(500, self.register_hotkeys)
         self._log.debug("hotkey.register_scheduled", "全局热键注册已调度", delayMs=500)
-        if not self._is_macos():
-            QTimer.singleShot(1200, self.prewarm_launcher_window)
-            self._log.debug("launcher.prewarm_scheduled", "启动器窗口预热已调度", delayMs=1200)
+        if self._launcher_prewarm_enabled() and not self._is_macos():
+            QTimer.singleShot(3000, self.prewarm_launcher_window)
+            self._log.debug("launcher.prewarm_scheduled", "启动器窗口预热已调度", delayMs=3000)
 
     def shutdown(self) -> None:
         self._hotkey_coordinator.unregister_all()
@@ -340,6 +343,7 @@ class LauncherRuntimeCoordinator:
 
     def force_close_plugin(self, plugin_id: str) -> None:
         if plugin_id:
+            self._surface_coordinator.destroy(plugin_id)
             self._session_manager.unload_plugin(plugin_id)
 
     def on_plugin_input_edited(self, plugin_id: str, text: str) -> None:
@@ -517,11 +521,38 @@ class LauncherRuntimeCoordinator:
         return getattr(self._platform_services.info, "name", "") == "macos"
 
     def _clipboard_hotkey_text(self) -> str:
-        service = self._plugin_context.services.clipboard
-        store = getattr(service, "store", None)
-        if store is None:
-            return ""
-        return str(store.get_config_value("hotkey") or "")
+        default_hotkey = str(
+            self._platform_services.default_clipboard_hotkey
+            or DEFAULT_CLIPBOARD_CONFIG.get("hotkey")
+            or "Alt+V"
+        )
+        service = getattr(self._plugin_context.services, "clipboard", None)
+        if service is not None:
+            get_config_value = getattr(service, "get_config_value", None)
+            if callable(get_config_value):
+                hotkey = str(get_config_value("hotkey") or "").strip()
+                if hotkey:
+                    return hotkey
+            store = getattr(service, "store", None)
+            if store is not None:
+                hotkey = str(store.get_config_value("hotkey") or "").strip()
+                if hotkey:
+                    return hotkey
+        storage = getattr(self._plugin_context.services, "storage", None)
+        if isinstance(storage, StorageManager):
+            try:
+                hotkey = str(
+                    storage.dict_store(
+                        "clipboard/settings",
+                        defaults=DEFAULT_CLIPBOARD_CONFIG,
+                    ).get("hotkey")
+                    or ""
+                ).strip()
+            except Exception:
+                hotkey = ""
+            if hotkey:
+                return hotkey
+        return default_hotkey
 
     def _connect_clipboard_config_changed(self) -> None:
         clipboard_service = self._plugin_context.services.clipboard
@@ -534,3 +565,7 @@ class LauncherRuntimeCoordinator:
         connect = getattr(config_changed, "connect", None)
         if callable(connect):
             connect(self.refresh_clipboard_hotkey)
+
+    @staticmethod
+    def _launcher_prewarm_enabled() -> bool:
+        return os.getenv("PY_DESKTOP_PREWARM_LAUNCHER", "").strip().lower() in {"1", "true", "yes", "on"}

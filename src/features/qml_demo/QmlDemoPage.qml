@@ -104,7 +104,7 @@ Item {
                     delegate: Loader {
                         active: index === root.currentPage
                         asynchronous: true
-                        source: Qt.resolvedUrl(modelData.source)
+                        source: Qt.resolvedUrl("pages/" + modelData.source)
                         onLoaded: {
                             if (item) {
                                 if (item.hasOwnProperty("dark")) item.dark = root.dark
