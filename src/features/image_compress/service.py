@@ -4,9 +4,11 @@ import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from PIL import Image
+if TYPE_CHECKING:
+    from PIL import Image as PILImage
 
 
 TEMP_OUTPUT_DIR = Path(tempfile.gettempdir()) / "py_desktop_tools_image_compress"
@@ -215,6 +217,7 @@ class ImageCompressService:
             ext = src_path.suffix.lower()
             output_suffix = ".jpg" if mode != "visual" and ext not in {".png", ".webp"} else (ext or ".jpg")
             target = self._output_dir / f"{src_path.stem or 'clip'}_{entry.id[:6]}{output_suffix}"
+            from PIL import Image
             with Image.open(src_path) as img:
                 if mode == "visual":
                     self._save_visual(img, target, ext)
@@ -231,7 +234,7 @@ class ImageCompressService:
             entry.error = f"压缩失败: {exc}"
 
     @staticmethod
-    def _save_visual(img: Image.Image, target: Path, ext: str) -> None:
+    def _save_visual(img: "PILImage.Image", target: Path, ext: str) -> None:
         if ext in (".png", ".gif", ".bmp"):
             quantized = img.quantize(colors=256)
             quantized.save(target, format="PNG", optimize=True)
@@ -241,7 +244,7 @@ class ImageCompressService:
             img.save(target, format="JPEG", quality=90)
 
     @staticmethod
-    def _save_normal(img: Image.Image, target: Path, ext: str, quality: int) -> None:
+    def _save_normal(img: "PILImage.Image", target: Path, ext: str, quality: int) -> None:
         if ext in (".jpg", ".jpeg"):
             img.save(target, format="JPEG", quality=quality)
         elif ext == ".png":

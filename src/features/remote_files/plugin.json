@@ -8,6 +8,7 @@
   "qmlPage": "RemoteFilesPage.qml",
   "contextProperty": "remoteFilesVm",
   "category": "tool",
+  "requires": ["webengine"],
   "window": {
     "width": 0.86,
     "height": 0.82

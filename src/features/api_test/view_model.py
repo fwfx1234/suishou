@@ -846,6 +846,10 @@ class ApiTestViewModel(QObject):
 
     def dispose(self) -> None:
         self._disposed = True
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
         self._sender.dispose()
         if self._service:
             self._service.close()

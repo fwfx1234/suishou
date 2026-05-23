@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../app/ui"
 import "../../app/theme"
-import "pages"
 
 Item {
     id: root
@@ -100,23 +99,20 @@ Item {
                 anchors.fill: parent; anchors.margins: 12
                 currentIndex: root.currentPage
 
-                BasicElementsPage { dark: root.dark; primary: root.primary }
-                LayoutPage { dark: root.dark; primary: root.primary }
-                BindingPage { dark: root.dark; primary: root.primary }
-                SignalsPage { dark: root.dark; primary: root.primary }
-                ControlsPage { dark: root.dark; primary: root.primary }
-                ComponentsPage { dark: root.dark; primary: root.primary }
-                ListViewPage { dark: root.dark; primary: root.primary }
-                ThemePage { dark: root.dark; primary: root.primary }
-                AnimationPage { dark: root.dark; primary: root.primary }
-                DialogPage { dark: root.dark; primary: root.primary }
-                LoaderPage { dark: root.dark; primary: root.primary }
-                TabBarPage { dark: root.dark; primary: root.primary }
-                TimerStatePage { dark: root.dark; primary: root.primary }
-                InputWidgetsPage { dark: root.dark; primary: root.primary }
-                TooltipMenuPage { dark: root.dark; primary: root.primary }
-                GradientFlowPage { dark: root.dark; primary: root.primary }
-                KeysShortcutPage { dark: root.dark; primary: root.primary }
+                Repeater {
+                    model: root.pages
+                    delegate: Loader {
+                        active: index === root.currentPage
+                        asynchronous: true
+                        source: Qt.resolvedUrl(modelData.source)
+                        onLoaded: {
+                            if (item) {
+                                if (item.hasOwnProperty("dark")) item.dark = root.dark
+                                if (item.hasOwnProperty("primary")) item.primary = root.primary
+                            }
+                        }
+                    }
+                }
             }
         }
     }

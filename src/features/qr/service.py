@@ -6,13 +6,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-import qrcode
-
-try:
-    import cv2  # type: ignore
-except Exception:  # pragma: no cover
-    cv2 = None
-
 
 DEFAULT_AUTO_SAVE_DIR = Path.home() / "Downloads" / "PyDesktopTools" / "QR"
 
@@ -59,15 +52,23 @@ class QrService:
         self._push_history("复制", content, "")
 
     def scan(self, image_path: str) -> tuple[str, str]:
-        if cv2 is None:
-            return "", "未安装 OpenCV，无法扫码。请安装 opencv-python。"
-        img = cv2.imread(image_path)
-        if img is None:
+        try:
+            import zxingcpp
+            from PIL import Image
+        except Exception:
+            return "", "扫码依赖未安装，请安装 zxing-cpp 与 Pillow。"
+        try:
+            with Image.open(image_path) as img:
+                results = zxingcpp.read_barcodes(img)
+        except FileNotFoundError:
             return "", "无法读取图片"
-        detector = cv2.QRCodeDetector()
-        data, _, _ = detector.detectAndDecode(img)
-        if not data:
+        except Exception as exc:
+            return "", f"无法读取图片: {exc}"
+        if not results:
             return "", "未识别到二维码"
+        data = results[0].text or ""
+        if not data:
+            return "", "二维码内容为空"
         self._push_history("扫描", data, image_path)
         return data, ""
 
@@ -109,6 +110,7 @@ class QrService:
         return target.as_posix(), ""
 
     def _render(self, content: str):
+        import qrcode
         qr = qrcode.QRCode(version=None, box_size=10, border=4)
         qr.add_data(content)
         qr.make(fit=True)

@@ -165,6 +165,8 @@ Item {
             clip: true
             spacing: 0
             model: vm ? vm.actions : []
+            reuseItems: true
+            cacheBuffer: 640
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: Rectangle {

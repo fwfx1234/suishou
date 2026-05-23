@@ -195,6 +195,9 @@ Item {
                         anchors.margins: Theme.space["2"]
                         fillMode: Image.PreserveAspectFit
                         cache: false
+                        asynchronous: true
+                        sourceSize.width: 360
+                        sourceSize.height: 360
                     }
                     Label {
                         visible: !qrImage.source || String(qrImage.source).length === 0

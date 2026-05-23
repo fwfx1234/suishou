@@ -6,10 +6,22 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtQuick import QQuickImageProvider
 
-try:
-    import qtawesome
-except Exception:  # pragma: no cover - runtime fallback
-    qtawesome = None
+
+_qtawesome = None
+_qtawesome_loaded = False
+
+
+def _load_qtawesome():
+    global _qtawesome, _qtawesome_loaded
+    if _qtawesome_loaded:
+        return _qtawesome
+    _qtawesome_loaded = True
+    try:
+        import qtawesome as qta
+        _qtawesome = qta
+    except Exception:  # pragma: no cover - runtime fallback
+        _qtawesome = None
+    return _qtawesome
 
 
 @dataclass
@@ -27,11 +39,12 @@ class QtAwesomeImageProvider(QQuickImageProvider):
 
     def requestPixmap(self, icon_id: str, size: QSize, requestedSize: QSize) -> QPixmap:
         spec = self._parse(icon_id, requestedSize)
-        if qtawesome is None:
+        qta = _load_qtawesome()
+        if qta is None:
             return QPixmap(spec.size, spec.size)
 
         try:
-            icon = qtawesome.icon(spec.name, color=spec.color)
+            icon = qta.icon(spec.name, color=spec.color)
             pixmap = icon.pixmap(spec.size, spec.size)
         except Exception:
             # Never crash QML image loading for invalid icon ids.

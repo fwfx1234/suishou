@@ -133,7 +133,12 @@ class DownloadViewModel(QObject):
 
     def dispose(self) -> None:
         self._disposed = True
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
         self._service.close()
+        self._platform = None
 
     def _emit_tasks_updated(self, items: list[dict]) -> None:
         self._post_ui(lambda payload=list(items): self._emit_tasks_updated_in_ui(payload))

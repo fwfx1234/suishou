@@ -233,6 +233,8 @@ Item {
                         clip: true
                         model: rows
                         spacing: 0
+                        reuseItems: true
+                        cacheBuffer: 1200
                         delegate: Rectangle {
                             width: ListView.view.width
                             height: 24

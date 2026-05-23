@@ -148,7 +148,13 @@ class ImageCompressViewModel(QObject):
 
     def dispose(self) -> None:
         self._disposed = True
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
         self._runner.shutdown(wait=False)
+        self._platform = None
+        self._clipboard_service = None
 
     def _read_clipboard_image(self) -> tuple[str, bool, str]:
         """Return (path, from_clipboard, error).

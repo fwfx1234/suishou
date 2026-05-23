@@ -160,6 +160,13 @@ def load_manifest_file(manifest_path: Path) -> PluginManifest:
 
     activation = _activation(raw.get("activation"))
 
+    requires_raw = raw.get("requires")
+    requires = tuple(
+        str(item).strip().lower()
+        for item in _list(requires_raw)
+        if str(item).strip()
+    )
+
     return PluginManifest(
         id=plugin_id,
         name=name,
@@ -175,7 +182,33 @@ def load_manifest_file(manifest_path: Path) -> PluginManifest:
         window_options=raw.get("window") if isinstance(raw.get("window"), dict) else {},
         commands=commands,
         package_dir=package_dir,
+        requires=requires,
     )
+
+
+def detect_required_capabilities() -> set[str]:
+    """Quick scan of all plugin.json files to collect declared `requires` items.
+
+    Intentionally avoids constructing full `PluginManifest` objects so it can
+    be called before `QApplication` is created. Reads each JSON file once.
+    """
+
+    capabilities: set[str] = set()
+    for root in default_plugin_dirs():
+        if not root.is_dir():
+            continue
+        for manifest_path in discover_manifest_files(root):
+            try:
+                raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if not isinstance(raw, dict):
+                continue
+            for item in _list(raw.get("requires")):
+                text = str(item).strip().lower()
+                if text:
+                    capabilities.add(text)
+    return capabilities
 
 
 def merge_manifests(

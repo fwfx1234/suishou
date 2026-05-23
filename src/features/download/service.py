@@ -8,8 +8,6 @@ from threading import Lock
 from typing import Callable
 from urllib.parse import unquote, urlparse
 
-import requests
-
 from app.concurrency import PythonTaskRunner, TaskHandle
 from app.logging import get_logger, make_task_id
 
@@ -164,6 +162,7 @@ class DownloadService:
         return task_id
 
     def _download_worker(self, handle: TaskHandle, task_id: str, url: str, target: Path) -> str:
+        import requests
         target.parent.mkdir(parents=True, exist_ok=True)
         written = 0
         total = 0

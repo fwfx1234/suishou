@@ -426,6 +426,10 @@ class RemoteFilesViewModel(QObject):
     def dispose(self) -> None:
         self._log.info("remote_files.viewmodel.dispose", "释放远程文件插件 ViewModel")
         self._disposed = True
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
         self._runner.shutdown(wait=False)
         self._service.close()
 

@@ -206,6 +206,8 @@ Item {
                 clip: true
                 model: entries
                 spacing: 4
+                reuseItems: true
+                cacheBuffer: 400
                 delegate: Rectangle {
                     width: ListView.view.width
                     height: 68
@@ -237,6 +239,8 @@ Item {
                                 fillMode: Image.PreserveAspectFit
                                 asynchronous: true
                                 cache: false
+                                sourceSize.width: 116
+                                sourceSize.height: 116
                             }
                         }
 

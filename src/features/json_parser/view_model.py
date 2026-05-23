@@ -17,6 +17,12 @@ class JsonParserViewModel(QObject):
         self._service = JsonService()
         self._platform = platform_api
         self._input_text = initial_text
+        self._disposed = False
+
+    def dispose(self) -> None:
+        self._disposed = True
+        self._service = None
+        self._platform = None
 
     @Slot(result=str)
     def initialText(self) -> str:

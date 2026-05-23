@@ -118,12 +118,20 @@ class QmlPluginSession:
 
     def close(self) -> None:
         if self._view_model is not None:
-            dispose = getattr(self._view_model, "dispose", None)
-            if callable(dispose):
-                try:
-                    dispose()
-                except Exception as exc:
-                    get_logger("app.plugins.runtime").warning("plugin.viewmodel.dispose_failed", "ViewModel dispose 失败", error=str(exc), pluginId=self.manifest.id)
+            for attr in ("dispose", "close"):
+                fn = getattr(self._view_model, attr, None)
+                if callable(fn):
+                    try:
+                        fn()
+                    except Exception as exc:
+                        get_logger("app.plugins.runtime").warning(
+                            "plugin.viewmodel.dispose_failed",
+                            "ViewModel dispose 失败",
+                            error=str(exc),
+                            pluginId=self.manifest.id,
+                            method=attr,
+                        )
+                    break
             self._view_model.deleteLater()
             self._view_model = None
 

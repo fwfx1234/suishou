@@ -56,6 +56,7 @@ class PluginManifest:
     window_options: dict = field(default_factory=dict)
     commands: list[CommandContribution] = field(default_factory=list)
     package_dir: Path | None = None
+    requires: tuple[str, ...] = ()
 
     @property
     def primary_command(self) -> CommandContribution:

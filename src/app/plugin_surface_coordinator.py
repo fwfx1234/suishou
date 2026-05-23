@@ -263,9 +263,8 @@ class PluginSurfaceCoordinator:
         host = self._host_from_state(state)
         if host == "window":
             self.destroy(plugin_id)
-        else:
-            if self._bridge is not None:
-                self._bridge.retainedPluginExpired.emit(plugin_id)
+        if self._bridge is not None:
+            self._bridge.retainedPluginExpired.emit(plugin_id)
 
     def _show_window_surface(self, plugin_id: str, session: PluginSession) -> bool:
         surface = self._get_live_surface(plugin_id)

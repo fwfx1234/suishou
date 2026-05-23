@@ -69,7 +69,7 @@ Rectangle {
         UiComboBox {
             id: methodCombo
             dark: root.dark
-            flat: true
+            compact: true
             model: root.methodModel
             Layout.preferredWidth: 82
             Layout.preferredHeight: 30

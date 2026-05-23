@@ -7,7 +7,7 @@ ComboBox {
 
     property bool dark: false
     property int cornerRadius: 6
-    property bool flat: false
+    property bool compact: false
     property color fillColor: control.dark
         ? Theme.token("color-bg-subtle", true)
         : Theme.token("color-bg-surface", false)
@@ -21,7 +21,7 @@ ComboBox {
 
     implicitHeight: 28
     leftPadding: 10
-    rightPadding: control.flat ? 22 : 32
+    rightPadding: control.compact ? 22 : 32
     hoverEnabled: true
     font.family: Theme.fontFamily.ui
     font.pixelSize: 13
@@ -49,14 +49,14 @@ ComboBox {
     }
 
     indicator: Item {
-        width: control.flat ? 14 : 20
+        width: control.compact ? 14 : 20
         height: control.height - 6
         x: control.width - width - 4
         y: 3
 
         Rectangle {
             id: accentBox
-            visible: !control.flat
+            visible: !control.compact
             anchors.fill: parent
             radius: 4
             color: control.accentColor
@@ -80,12 +80,12 @@ ComboBox {
                 ctx.lineWidth = 1.5
                 ctx.lineCap = "round"
                 ctx.lineJoin = "round"
-                ctx.strokeStyle = control.flat ? control.mutedColor : "#FFFFFF"
+                ctx.strokeStyle = control.compact ? control.mutedColor : "#FFFFFF"
 
                 var w = width
                 var h = height
                 var cx = w / 2
-                if (control.flat) {
+                if (control.compact) {
                     var pad = 3
                     ctx.beginPath()
                     ctx.moveTo(pad, h / 2 - 2)

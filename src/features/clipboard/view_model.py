@@ -383,12 +383,15 @@ class ClipboardWindowViewModel(QObject):
         self._service.set_config_value("hotkey", hotkey)
         self.messageChanged.emit(f"剪切板快捷键已保存为 {hotkey}")
 
-    def close(self) -> None:
+    def dispose(self) -> None:
         self._service.remove_history_listener(self._on_history_changed)
         self._service.remove_config_listener(self._emit_config)
 
+    # Backwards-compatible alias used by tests and legacy callers.
+    close = dispose
+
     def deleteLater(self) -> None:
-        self.close()
+        self.dispose()
         super().deleteLater()
 
     def _on_history_changed(self) -> None:

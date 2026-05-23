@@ -145,6 +145,12 @@ class PacketCaptureViewModel(QObject):
             self._service.stop()
         except Exception:
             pass
+        try:
+            self._uiCallback.disconnect(self._run_ui_callback)
+        except (RuntimeError, TypeError):
+            pass
+        self._service = None
+        self._platform = None
 
     def _publish_rows(self) -> None:
         rows = self._service.rows()

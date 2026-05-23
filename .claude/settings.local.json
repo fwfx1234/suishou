@@ -42,7 +42,26 @@
       "Bash(python -c ' *)",
       "Bash(python *)",
       "Bash(grep -E \"^\\\\+.*[{]$|^\\\\-.*[{]$|^\\\\+.*[}]$|^\\\\-.*[}]$\")",
-      "Bash(bash *)"
+      "Bash(bash *)",
+      "Bash(git stash *)",
+      "Bash(PY_DESKTOP_TOOLS_LOG_CONSOLE=1 PY_DESKTOP_TOOLS_LOG_LEVEL=DEBUG timeout 12 uv run app)",
+      "Bash(uv pip *)",
+      "Bash(xargs -I{} ls -la {})",
+      "Bash(du -sm .venv/Lib/site-packages/zxingcpp*)",
+      "Bash(du -sm .venv/Lib/site-packages/zxing*)",
+      "Bash(PY_DESKTOP_TOOLS_LOG_CONSOLE=1 PY_DESKTOP_TOOLS_LOG_LEVEL=DEBUG timeout 10 uv run app)",
+      "Bash(rm -rf tests/)",
+      "Bash(ls .venv/Scripts/pytest*)",
+      "Bash(taskkill /F /IM app.exe /T)",
+      "Bash(taskkill /F /PID 31340)",
+      "Bash(taskkill /F /PID 26148)",
+      "Bash(taskkill /F /IM QtWebEngineProcess.exe)",
+      "Bash(cmd.exe //c \"taskkill /F /IM app.exe /T\")",
+      "Bash(cmd.exe //c \"taskkill /F /PID 31340\")",
+      "Bash(cmd.exe //c \"taskkill /F /IM QtWebEngineProcess.exe /T\")",
+      "Bash(PY_DESKTOP_TOOLS_LOG_CONSOLE=1 PY_DESKTOP_TOOLS_LOG_LEVEL=DEBUG QT_LOGGING_RULES=\"qt.qml.import.debug=true;qt.quick.*.debug=true\" timeout 8 uv run app)",
+      "Bash(grep -E \"===|qml_page|OK$|ERROR|FAILED\" F:/develop/suishou/.tmp/diag_out.txt)",
+      "Bash(timeout 8 sh -c \"PY_DESKTOP_TOOLS_LOG_CONSOLE=1 PY_DESKTOP_TOOLS_LOG_LEVEL=DEBUG uv run app 2>&1\")"
     ]
   }
 }

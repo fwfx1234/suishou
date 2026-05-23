@@ -14,7 +14,7 @@ dependencies = [
     "websocket-client>=1.8.0",
     "pyside6-addons>=6.11.0",
     "PyYAML>=6.0.2",
-    "opencv-python>=4.10.0",
+    "zxing-cpp>=2.2.0",
     "pypinyin>=0.50.0",
     "pylnk3>=0.4.2; sys_platform == 'win32'",
     "pynput>=1.7.7; sys_platform == 'darwin'",
@@ -26,26 +26,6 @@ dependencies = [
 [dependency-groups]
 build = [
     "pyinstaller>=6.0",
-]
-test = [
-    "pytest>=8.0",
-]
-
-[tool.pytest.ini_options]
-minversion = "8.0"
-testpaths = ["tests"]
-pythonpath = ["src"]
-addopts = [
-    "-v",
-    "--tb=short",
-    "--strict-markers",
-    "--color=yes",
-]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "unit: unit tests (pure logic, no I/O)",
-    "integration: integration tests (real DB or network)",
-    "contract: contract/API surface tests",
 ]
 
 [project.scripts]

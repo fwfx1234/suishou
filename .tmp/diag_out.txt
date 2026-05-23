@@ -1,0 +1,51 @@
+
+=== api-test ===
+  context names: {'apiTestVm'}
+  qml_page: file:///F:/develop/suishou/src/features/api_test/ApiTestPage.qml
+  OK
+
+=== remote-files ===
+  context names: {'remoteFilesVm'}
+  qml_page: file:///F:/develop/suishou/src/features/remote_files/RemoteFilesPage.qml
+  OK
+
+=== qr-code ===
+  context names: {'qrVm'}
+  qml_page: file:///F:/develop/suishou/src/features/qr/QrCodePage.qml
+  OK
+
+=== clipboard ===
+  context names: {'clipboardVm'}
+  qml_page: file:///F:/develop/suishou/src/features/clipboard/ClipboardWindowPage.qml
+  OK
+
+=== json-parser ===
+  context names: {'jsonParserVm'}
+  qml_page: file:///F:/develop/suishou/src/features/json_parser/JsonParserPage.qml
+  OK
+
+=== image-compress ===
+  context names: {'imageCompressVm'}
+  qml_page: file:///F:/develop/suishou/src/features/image_compress/ImageCompressPage.qml
+  OK
+
+=== download ===
+  context names: {'downloadVm'}
+  qml_page: file:///F:/develop/suishou/src/features/download/DownloadToolPage.qml
+  OK
+
+=== packet-capture ===
+  context names: {'packetCaptureVm'}
+  qml_page: file:///F:/develop/suishou/src/features/packet_capture/PacketCapturePage.qml
+  OK
+
+=== qml-demo ===
+  context names: {'qmlDemoVm'}
+  qml_page: file:///F:/develop/suishou/src/features/qml_demo/QmlDemoPage.qml
+  OK
+  [QtWarningMsg] file:///F:/develop/suishou/src/features/qml_demo/BasicElementsPage.qml: No such file or directory  @ file:///F:/develop/suishou/src/features/qml_demo/BasicElementsPage.qml:-1
+
+=== system-settings ===
+  context names: {'systemSettingsVm'}
+  qml_page: file:///F:/develop/suishou/src/features/system/SystemSettingsPage.qml
+  OK

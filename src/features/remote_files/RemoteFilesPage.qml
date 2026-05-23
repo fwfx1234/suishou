@@ -1888,6 +1888,7 @@ Item {
     component TerminalPane: Rectangle {
         id: terminalPane
         property var bridge: null
+        property bool active: StackLayout.isCurrentItem
         color: dark ? "#101014" : "#FFFFFF"
 
         ColumnLayout {
@@ -1977,25 +1978,42 @@ Item {
                 registeredObjects: [terminalProxy]
             }
 
-            WebEngineView {
-                id: terminalView
+            Component {
+                id: terminalViewComponent
+                WebEngineView {
+                    id: terminalView
+                    url: Qt.resolvedUrl("assets/terminal.html")
+                    webChannel: terminalChannel
+                    onNavigationRequested: function(request) {
+                        if (request.url.toString().indexOf(Qt.resolvedUrl("assets/terminal.html").toString()) !== 0)
+                            request.action = WebEngineNavigationRequest.IgnoreRequest
+                    }
+                    onContextMenuRequested: function(request) {
+                        request.accepted = true
+                        webContextMenu.editFlags = request.editFlags
+                        webContextMenu.hasSelection = (request.selectedText || "").length > 0
+                        var p = mapToItem(Overlay.overlay, request.position.x, request.position.y)
+                        webContextMenu.x = p.x
+                        webContextMenu.y = p.y
+                        webContextMenu.open()
+                    }
+                }
+            }
+
+            Loader {
+                id: terminalViewLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                url: Qt.resolvedUrl("assets/terminal.html")
-                webChannel: terminalChannel
-                onNavigationRequested: function(request) {
-                    if (request.url.toString().indexOf(Qt.resolvedUrl("assets/terminal.html").toString()) !== 0)
-                        request.action = WebEngineNavigationRequest.IgnoreRequest
+                active: terminalPane.active
+                asynchronous: true
+                sourceComponent: terminalViewComponent
+            }
+
+            Component.onDestruction: {
+                if (terminalViewLoader.item) {
+                    terminalViewLoader.item.url = "about:blank"
                 }
-                onContextMenuRequested: function(request) {
-                    request.accepted = true
-                    webContextMenu.editFlags = request.editFlags
-                    webContextMenu.hasSelection = (request.selectedText || "").length > 0
-                    var p = terminalView.mapToItem(Overlay.overlay, request.position.x, request.position.y)
-                    webContextMenu.x = p.x
-                    webContextMenu.y = p.y
-                    webContextMenu.open()
-                }
+                terminalViewLoader.active = false
             }
 
             Popup {
@@ -2032,14 +2050,14 @@ Item {
                         dark: root.dark
                         text: "撤销"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanUndo) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.Undo); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.Undo); webContextMenu.close() }
                     }
                     UiMenuItem {
                         width: webContextMenu.width - 8
                         dark: root.dark
                         text: "重做"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanRedo) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.Redo); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.Redo); webContextMenu.close() }
                     }
                     UiMenuSeparator { width: webContextMenu.width - 8; dark: root.dark }
                     UiMenuItem {
@@ -2047,21 +2065,21 @@ Item {
                         dark: root.dark
                         text: "剪切"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanCut) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.Cut); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.Cut); webContextMenu.close() }
                     }
                     UiMenuItem {
                         width: webContextMenu.width - 8
                         dark: root.dark
                         text: "复制"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanCopy) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.Copy); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.Copy); webContextMenu.close() }
                     }
                     UiMenuItem {
                         width: webContextMenu.width - 8
                         dark: root.dark
                         text: "粘贴"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanPaste) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.Paste); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.Paste); webContextMenu.close() }
                     }
                     UiMenuSeparator { width: webContextMenu.width - 8; dark: root.dark }
                     UiMenuItem {
@@ -2069,7 +2087,7 @@ Item {
                         dark: root.dark
                         text: "全选"
                         itemEnabled: (webContextMenu.editFlags & webContextMenu.flagCanSelectAll) !== 0
-                        onTriggered: { terminalView.triggerWebAction(WebEngineView.SelectAll); webContextMenu.close() }
+                        onTriggered: { if (terminalViewLoader.item) terminalViewLoader.item.triggerWebAction(WebEngineView.SelectAll); webContextMenu.close() }
                     }
                 }
             }

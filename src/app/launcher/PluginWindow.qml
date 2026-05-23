@@ -64,6 +64,18 @@ Window {
         pluginWin.retainedCloseRequested(pluginWin.pluginId)
     }
 
+    onVisibleChanged: {
+        if (visible) {
+            pageLoader.active = qmlPage.length > 0
+        } else if (retainOnClose) {
+            pageLoader.active = false
+        }
+    }
+
+    Component.onDestruction: {
+        pageLoader.active = false
+    }
+
     FocusScope {
         anchors.fill: parent
         focus: true
