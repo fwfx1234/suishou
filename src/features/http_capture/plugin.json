@@ -1,22 +1,26 @@
 {
-  "id": "packet-capture",
-  "name": "抓包工具",
+  "id": "http-capture",
+  "name": "HTTP 抓包",
   "version": "1.0.0",
   "description": "HTTP 请求捕获与分析",
   "icon": "capture",
   "entrypoint": "runtime:create_runtime",
-  "qmlPage": "PacketCapturePage.qml",
-  "contextProperty": "packetCaptureVm",
+  "qmlPage": "HttpCapturePage.qml",
+  "contextProperty": "httpCaptureVm",
   "category": "tool",
   "order": 5,
+  "window": {
+    "width": 0.86,
+    "height": 0.82
+  },
   "commands": [
     {
-      "id": "packet-capture.open",
-      "title": "抓包工具",
+      "id": "http-capture.open",
+      "title": "HTTP 抓包",
       "subtitle": "HTTP 请求捕获与分析",
       "icon": "capture",
-      "keywords": ["抓包", "capture", "packet", "http", "网络"],
-      "prefixes": ["cap", "capture"],
+      "keywords": ["抓包", "capture", "http", "https", "proxy", "代理", "请求", "手机抓包", "证书", "mitm"],
+      "prefixes": ["cap", "capture", "httpcap", "mitm"],
       "launchMode": "window",
       "matchers": [
         {"source": "input", "kind": "url", "boost": 45},
