@@ -545,8 +545,8 @@ Item {
 
     Connections {
         target: qrVm
-        function onPreviewUpdated(path) {
-            qrImage.source = path ? ("file://" + path + "?t=" + Date.now()) : ""
+        function onPreviewUpdated(source) {
+            qrImage.source = source || ""
         }
         function onQrSaved(ok, path, message) {
             setStatus(message, ok ? "success" : "error")

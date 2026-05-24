@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import re
-import tempfile
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 
 DEFAULT_AUTO_SAVE_DIR = Path.home() / "Downloads" / "PyDesktopTools" / "QR"
@@ -23,9 +25,10 @@ class QrService:
         if not content.strip():
             return ""
         image = self._render(content)
-        temp = Path(tempfile.gettempdir()) / "py_desktop_tools_qr_preview.png"
-        image.save(temp)
-        return temp.as_posix()
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
 
     def save(self, content: str) -> tuple[str, str]:
         if not content.strip():
@@ -146,7 +149,10 @@ class QrService:
 def normalize_local_path(raw: str) -> str:
     if not raw:
         return ""
-    cleaned = raw
+    cleaned = raw.strip().strip("\"'")
     if cleaned.startswith("file://"):
-        cleaned = re.sub(r"^file:/+", "/", cleaned)
+        parsed = urlparse(cleaned)
+        cleaned = unquote(parsed.path)
+        if re.match(r"^/[A-Za-z]:/", cleaned):
+            cleaned = cleaned[1:]
     return cleaned
